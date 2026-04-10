@@ -26,6 +26,18 @@ function navItemActive(pathname: string, href: string): boolean {
   if (href === "/admin/users") {
     return pathname === "/admin/users" || pathname.startsWith("/admin/users/");
   }
+  if (href === "/admin/reviews") {
+    return pathname === "/admin/reviews" || pathname.startsWith("/admin/reviews/");
+  }
+  if (href === "/admin/deliverables") {
+    return pathname === "/admin/deliverables" || pathname.startsWith("/admin/deliverables/");
+  }
+  if (href === "/admin/billing") {
+    return pathname === "/admin/billing" || pathname.startsWith("/admin/billing/");
+  }
+  if (href === "/admin/ops") {
+    return pathname === "/admin/ops" || pathname.startsWith("/admin/ops/");
+  }
   if (href === "/dashboard") {
     return pathname === "/dashboard";
   }
@@ -34,6 +46,9 @@ function navItemActive(pathname: string, href: string): boolean {
   }
   if (href === "/dashboard/tasks") {
     return pathname.startsWith("/dashboard/tasks");
+  }
+  if (href === "/admin/progress") {
+    return pathname === "/admin/progress" || pathname.startsWith("/admin/progress/");
   }
   return pathname === href;
 }
@@ -82,6 +97,46 @@ function UsersIcon({ className }: { className?: string }) {
   );
 }
 
+function ReviewIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" aria-hidden>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3h6m-8.25 9h9A2.25 2.25 0 0016.5 18V6A2.25 2.25 0 0014.25 3.75h-9A2.25 2.25 0 003 6v12a2.25 2.25 0 002.25 2.25zM16.5 14.25l2.69 2.69a1.5 1.5 0 010 2.12l-.53.53a1.5 1.5 0 01-2.12 0l-2.69-2.69" />
+    </svg>
+  );
+}
+
+function DeliverableIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" aria-hidden>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5A3.375 3.375 0 0010.125 2.25H6.75A2.25 2.25 0 004.5 4.5v15A2.25 2.25 0 006.75 21.75h10.5a2.25 2.25 0 002.25-2.25V14.25z" />
+    </svg>
+  );
+}
+
+function BillingIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" aria-hidden>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-9.75h4.125a1.875 1.875 0 010 3.75H10.5a1.875 1.875 0 000 3.75H15m-9-3.75h.008v.008H6v-.008zm12 0h.008v.008H18v-.008zM21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  );
+}
+
+function OpsIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" aria-hidden>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 3.75h1.5m-6.75 3h12m-14.25 4.5h16.5m-15 4.5h13.5M9 16.5h6m-7.5 3h9" />
+    </svg>
+  );
+}
+
+function ProgressIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" aria-hidden>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 18h16.5M6.75 15.75v-3.75m4.5 3.75V9m4.5 6.75v-2.25m4.5 2.25V6.75" />
+    </svg>
+  );
+}
+
 function canAccessAdminPanel(globalRole: string | undefined): boolean {
   const r = String(globalRole ?? "").toUpperCase();
   return r === "ADMIN" || r === "SUB_ADMIN";
@@ -112,6 +167,11 @@ export function AppShell({
         ...baseNav,
         { href: "/admin", label: "Admin", icon: ShieldIcon },
         { href: "/admin/users", label: "Users", icon: UsersIcon },
+        { href: "/admin/reviews", label: "Reviews", icon: ReviewIcon },
+        { href: "/admin/deliverables", label: "Deliverables", icon: DeliverableIcon },
+        { href: "/admin/billing", label: "Billing", icon: BillingIcon },
+        { href: "/admin/progress", label: "Progress", icon: ProgressIcon },
+        { href: "/admin/ops", label: "Ops", icon: OpsIcon },
       ]
     : baseNav;
 
