@@ -50,6 +50,12 @@ function navItemActive(pathname: string, href: string): boolean {
   if (href === "/admin/progress") {
     return pathname === "/admin/progress" || pathname.startsWith("/admin/progress/");
   }
+  if (href === "/admin/workflow") {
+    return pathname === "/admin/workflow" || pathname.startsWith("/admin/workflow/");
+  }
+  if (href === "/admin/git") {
+    return pathname === "/admin/git" || pathname.startsWith("/admin/git/");
+  }
   return pathname === href;
 }
 
@@ -137,6 +143,22 @@ function ProgressIcon({ className }: { className?: string }) {
   );
 }
 
+function WorkflowIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" aria-hidden>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6 6.75A2.25 2.25 0 108.25 9h7.5a2.25 2.25 0 100-1.5h-7.5A2.25 2.25 0 006 6.75zm10.5 8.25a2.25 2.25 0 10-2.25 2.25H9.75a2.25 2.25 0 100 1.5h4.5A2.25 2.25 0 1016.5 15z" />
+    </svg>
+  );
+}
+
+function GitIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" aria-hidden>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 6h4.5a2.25 2.25 0 012.25 2.25V9m0 6v.75A2.25 2.25 0 0112 18H7.5A2.25 2.25 0 015.25 15.75v-1.5A2.25 2.25 0 017.5 12H12m2.25-3h2.25A2.25 2.25 0 0118.75 11.25v4.5A2.25 2.25 0 0116.5 18h-2.25A2.25 2.25 0 0112 15.75v-4.5A2.25 2.25 0 0114.25 9z" />
+    </svg>
+  );
+}
+
 function canAccessAdminPanel(globalRole: string | undefined): boolean {
   const r = String(globalRole ?? "").toUpperCase();
   return r === "ADMIN" || r === "SUB_ADMIN";
@@ -171,6 +193,8 @@ export function AppShell({
         { href: "/admin/deliverables", label: "Deliverables", icon: DeliverableIcon },
         { href: "/admin/billing", label: "Billing", icon: BillingIcon },
         { href: "/admin/progress", label: "Progress", icon: ProgressIcon },
+        { href: "/admin/workflow", label: "Workflow", icon: WorkflowIcon },
+        { href: "/admin/git", label: "Git", icon: GitIcon },
         { href: "/admin/ops", label: "Ops", icon: OpsIcon },
       ]
     : baseNav;

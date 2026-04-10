@@ -231,7 +231,7 @@ export function ProgressPanel() {
             className="rounded-md border border-neutral-300 px-3 py-2 text-sm"
           >
             <option value="">All workspaces</option>
-            {(portfolio?.filters.options.workspaces ?? []).map((w) => (
+            {(portfolio?.filters?.options?.workspaces ?? []).map((w) => (
               <option key={w.id} value={w.id}>
                 {w.name}
               </option>
@@ -243,7 +243,7 @@ export function ProgressPanel() {
             className="rounded-md border border-neutral-300 px-3 py-2 text-sm"
           >
             <option value="">All clients</option>
-            {(portfolio?.filters.options.clients ?? []).map((c) => (
+            {(portfolio?.filters?.options?.clients ?? []).map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
               </option>
@@ -255,7 +255,7 @@ export function ProgressPanel() {
             className="rounded-md border border-neutral-300 px-3 py-2 text-sm"
           >
             <option value="">All states</option>
-            {(portfolio?.filters.options.states ?? []).map((state) => (
+            {(portfolio?.filters?.options?.states ?? []).map((state) => (
               <option key={state} value={state}>
                 {state}
               </option>
