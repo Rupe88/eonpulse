@@ -20,7 +20,10 @@ const baseNav: NavItem[] = [
 
 function navItemActive(pathname: string, href: string): boolean {
   if (href === "/admin") {
-    return pathname === "/admin" || pathname.startsWith("/admin/");
+    return pathname === "/admin";
+  }
+  if (href === "/admin/users") {
+    return pathname === "/admin/users" || pathname.startsWith("/admin/users/");
   }
   if (href === "/dashboard") {
     return pathname === "/dashboard";
@@ -66,6 +69,18 @@ function ShieldIcon({ className }: { className?: string }) {
   );
 }
 
+function UsersIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" aria-hidden>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M18 7.5a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zM10.5 8.25a3 3 0 11-6 0 3 3 0 016 0zM4.314 18a5.25 5.25 0 0110.372 0M14.25 18h5.436a3.75 3.75 0 00-5.436-3.34"
+      />
+    </svg>
+  );
+}
+
 function canAccessAdminPanel(globalRole: string | undefined): boolean {
   const r = String(globalRole ?? "").toUpperCase();
   return r === "ADMIN" || r === "SUB_ADMIN";
@@ -92,7 +107,11 @@ export function AppShell({
   const showAdmin = canAccessAdminPanel(user?.role);
 
   const nav: NavItem[] = showAdmin
-    ? [...baseNav, { href: "/admin", label: "Admin", icon: ShieldIcon }]
+    ? [
+        ...baseNav,
+        { href: "/admin", label: "Admin", icon: ShieldIcon },
+        { href: "/admin/users", label: "Users", icon: UsersIcon },
+      ]
     : baseNav;
 
   return (
