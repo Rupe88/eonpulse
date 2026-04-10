@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { AppShell } from "@/components/layout/app-shell";
+import { AppShell, AppShellSkeleton } from "@/components/layout/app-shell";
 import { UsersManagementPanel } from "@/components/admin/users-management-panel";
 import { Spinner } from "@/components/ui/spinner";
 import { replaceOrHardNavigate } from "@/lib/auth/navigate-after-auth";
@@ -30,11 +30,7 @@ export default function AdminUsersPage() {
   }, [ready, status, user, router]);
 
   if (!ready) {
-    return (
-      <div className="flex min-h-full flex-1 items-center justify-center bg-[var(--color-canvas)]">
-        <Spinner />
-      </div>
-    );
+    return <AppShellSkeleton headerTitle="User Management" headerSubtitle="Loading users module" />;
   }
 
   if (status !== "authenticated" || !user) {

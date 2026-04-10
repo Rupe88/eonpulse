@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { WorkerOverview } from "@/components/dashboard/worker-overview";
-import { Spinner } from "@/components/ui/spinner";
+import { AppShellSkeleton } from "@/components/layout/app-shell";
 import { useAuth } from "@/contexts/auth-context";
 
 export default function DashboardPage() {
@@ -17,11 +17,7 @@ export default function DashboardPage() {
   }, [ready, status, router]);
 
   if (!ready || status !== "authenticated" || !user) {
-    return (
-      <div className="flex min-h-full flex-1 items-center justify-center bg-[var(--color-canvas)]">
-        <Spinner />
-      </div>
-    );
+    return <AppShellSkeleton headerTitle="Overview" headerSubtitle="Loading dashboard" />;
   }
 
   return <WorkerOverview />;

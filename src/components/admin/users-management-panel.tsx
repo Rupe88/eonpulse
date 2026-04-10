@@ -2,11 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Spinner } from "@/components/ui/spinner";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/auth-context";
 import { ApiError } from "@/lib/api/http";
 import { createAdminUser, listAdminUsers, updateAdminUser, type AdminUserRow } from "@/lib/api/users";
 
 const ROLE_OPTIONS = ["ADMIN", "SUB_ADMIN", "WORKER", "CLIENT_OWNER", "FINANCE", "AUDITOR"] as const;
+type ToastType = "success" | "error" | "info";
+type ToastItem = { id: string; type: ToastType; message: string };
 
 function EyeOpenIcon({ className }: { className?: string }) {
   return (
@@ -38,6 +41,10 @@ export function UsersManagementPanel() {
   const [rows, setRows] = useState<AdminUserRow[]>([]);
   const [search, setSearch] = useState("");
   const [searchDebounced, setSearchDebounced] = useState("");
+  const [roleFilter, setRoleFilter] = useState<string>("ALL");
+  const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ALL");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -54,7 +61,8 @@ export function UsersManagementPanel() {
   const [resetPassword, setResetPassword] = useState("");
   const [showResetPassword, setShowResetPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [banner, setBanner] = useState<string | null>(null);
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const [firstLoadDone, setFirstLoadDone] = useState(false);
 
   const canCreateAdmin = String(user?.role ?? "").toUpperCase() === "ADMIN";
   const availableRoles = useMemo(
@@ -79,16 +87,88 @@ export function UsersManagementPanel() {
         setError(errorMessage(e));
       } finally {
         setLoading(false);
+        setFirstLoadDone(true);
       }
     })();
   }, [token, searchDebounced]);
+
+  const filteredRows = useMemo(() => {
+    return rows.filter((u) => {
+      if (roleFilter !== "ALL" && u.globalRole !== roleFilter) {
+        return false;
+      }
+      if (statusFilter === "ACTIVE" && !u.isActive) {
+        return false;
+      }
+      if (statusFilter === "INACTIVE" && u.isActive) {
+        return false;
+      }
+      return true;
+    });
+  }, [rows, roleFilter, statusFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
+  const pagedRows = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredRows.slice(start, start + pageSize);
+  }, [filteredRows, page, pageSize]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchDebounced, roleFilter, statusFilter, pageSize]);
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
+
+  function pushToast(type: ToastType, message: string) {
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    setToasts((prev) => [...prev, { id, type, message }]);
+    window.setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 3200);
+  }
+
+  function resetFilters() {
+    setSearch("");
+    setSearchDebounced("");
+    setRoleFilter("ALL");
+    setStatusFilter("ALL");
+  }
+
+  function exportCsv() {
+    const header = ["Name", "Email", "Role", "Status", "Created At"];
+    const escapeCell = (value: string) => `"${value.replace(/"/g, '""')}"`;
+    const lines = filteredRows.map((u) =>
+      [
+        u.name?.trim() || "",
+        u.email,
+        u.globalRole,
+        u.isActive ? "Active" : "Inactive",
+        new Date(u.createdAt).toISOString(),
+      ]
+        .map(escapeCell)
+        .join(","),
+    );
+    const csv = [header.join(","), ...lines].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `users-export-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  }
 
   async function onCreateUser(e: React.FormEvent) {
     e.preventDefault();
     if (!token) return;
     setSubmitting(true);
     setError(null);
-    setBanner(null);
     try {
       const created = await createAdminUser(token, {
         name: name.trim() || undefined,
@@ -97,13 +177,15 @@ export function UsersManagementPanel() {
         role,
       });
       setRows((prev) => [created, ...prev.filter((u) => u.id !== created.id)]);
-      setBanner(`User created: ${created.email}`);
+      pushToast("success", `User created: ${created.email}`);
       setName("");
       setEmail("");
       setPassword("");
       setRole("WORKER");
     } catch (e) {
-      setError(errorMessage(e));
+      const msg = errorMessage(e);
+      setError(msg);
+      pushToast("error", msg);
     } finally {
       setSubmitting(false);
     }
@@ -122,7 +204,6 @@ export function UsersManagementPanel() {
     if (!token) return;
     setRowBusyId(userId);
     setError(null);
-    setBanner(null);
     try {
       const body: {
         name?: string;
@@ -141,11 +222,13 @@ export function UsersManagementPanel() {
       }
       const updated = await updateAdminUser(token, userId, body);
       setRows((prev) => prev.map((r) => (r.id === userId ? updated : r)));
-      setBanner(`User updated: ${updated.email}`);
+      pushToast("success", `User updated: ${updated.email}`);
       setEditId(null);
       setResetPassword("");
     } catch (e) {
-      setError(errorMessage(e));
+      const msg = errorMessage(e);
+      setError(msg);
+      pushToast("error", msg);
     } finally {
       setRowBusyId(null);
     }
@@ -153,11 +236,22 @@ export function UsersManagementPanel() {
 
   return (
     <div className="space-y-6">
-      {banner ? (
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
-          {banner}
-        </div>
-      ) : null}
+      <div className="fixed right-5 top-5 z-[80] space-y-2">
+        {toasts.map((t) => (
+          <div
+            key={t.id}
+            className={`min-w-[280px] rounded-lg border px-4 py-3 text-sm shadow-lg ${
+              t.type === "success"
+                ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+                : t.type === "error"
+                  ? "border-red-200 bg-red-50 text-red-900"
+                  : "border-blue-200 bg-blue-50 text-blue-900"
+            }`}
+          >
+            {t.message}
+          </div>
+        ))}
+      </div>
       {error ? (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">{error}</div>
       ) : null}
@@ -243,15 +337,114 @@ export function UsersManagementPanel() {
       </section>
 
       <section className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="text-base font-semibold text-neutral-900">Users</h2>
-          <input
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name or email"
-            className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm sm:w-72"
-          />
+        {!firstLoadDone && loading ? (
+          <div className="space-y-4">
+            <div className="grid gap-2 sm:grid-cols-3">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+            <div className="space-y-2">
+              <Skeleton className="h-9 w-full" />
+              <Skeleton className="h-9 w-full" />
+              <Skeleton className="h-9 w-full" />
+              <Skeleton className="h-9 w-full" />
+              <Skeleton className="h-9 w-full" />
+              <Skeleton className="h-9 w-full" />
+            </div>
+          </div>
+        ) : (
+          <>
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <h2 className="text-base font-semibold text-neutral-900">Users</h2>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={exportCsv}
+                disabled={filteredRows.length === 0}
+                className="rounded-md border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-700 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Export CSV
+              </button>
+              <button
+                type="button"
+                onClick={resetFilters}
+                className="rounded-md border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-700 hover:bg-neutral-50"
+              >
+                Clear filters
+              </button>
+            </div>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-3">
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by name or email"
+              className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
+            />
+            <select
+              value={roleFilter}
+              onChange={(e) => setRoleFilter(e.target.value)}
+              className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
+            >
+              <option value="ALL">All roles</option>
+              {ROLE_OPTIONS.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
+            <select
+              value={statusFilter}
+              onChange={(e) =>
+                setStatusFilter(e.target.value as "ALL" | "ACTIVE" | "INACTIVE")
+              }
+              className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
+            >
+              <option value="ALL">All statuses</option>
+              <option value="ACTIVE">Active</option>
+              <option value="INACTIVE">Inactive</option>
+            </select>
+          </div>
+          <p className="text-xs text-neutral-500">
+            Showing {filteredRows.length} of {rows.length} users
+          </p>
+          <div className="flex flex-col gap-2 text-xs text-neutral-600 sm:flex-row sm:items-center sm:justify-between">
+            <p>
+              Page {page} of {totalPages}
+            </p>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-neutral-600">Rows</label>
+              <select
+                value={pageSize}
+                onChange={(e) => setPageSize(Number(e.target.value))}
+                className="rounded-md border border-neutral-300 px-2 py-1.5 text-xs"
+              >
+                <option value={5}>5</option>
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="rounded-md border border-neutral-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-neutral-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Prev
+              </button>
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+                className="rounded-md border border-neutral-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-neutral-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+          </div>
         </div>
 
         {loading ? (
@@ -272,7 +465,7 @@ export function UsersManagementPanel() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-200">
-                {rows.map((u) => {
+                {pagedRows.map((u) => {
                   const editing = editId === u.id;
                   const busy = rowBusyId === u.id;
                   const self = user?.userId === u.id;
@@ -400,10 +593,12 @@ export function UsersManagementPanel() {
                 })}
               </tbody>
             </table>
-            {!rows.length ? (
+            {!pagedRows.length ? (
               <p className="mt-3 text-sm text-neutral-500">No users found.</p>
             ) : null}
           </div>
+        )}
+          </>
         )}
       </section>
     </div>

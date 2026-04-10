@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { useAuth } from "@/contexts/auth-context";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type NavItem = {
   href: string;
@@ -192,6 +193,56 @@ export function AppShell({
           </Link>
         </header>
         <main className={mainClassName ?? "flex-1 p-6"}>{children}</main>
+      </div>
+    </div>
+  );
+}
+
+export function AppShellSkeleton({
+  headerTitle = "Loading...",
+  headerSubtitle = "Preparing workspace",
+}: {
+  headerTitle?: string;
+  headerSubtitle?: string;
+}) {
+  return (
+    <div className="flex min-h-full flex-1 bg-[var(--color-canvas)]">
+      <aside className="fixed inset-y-0 left-0 z-40 flex w-[260px] flex-col border-r border-[var(--color-border)] bg-[var(--color-sidebar)]">
+        <div className="flex h-14 items-center border-b border-[var(--color-border)] px-4">
+          <div className="min-w-0 flex-1 space-y-1">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-3 w-16" />
+          </div>
+        </div>
+        <nav className="flex-1 space-y-2 p-3">
+          <Skeleton className="h-10 w-full rounded-lg" />
+          <Skeleton className="h-10 w-full rounded-lg" />
+          <Skeleton className="h-10 w-full rounded-lg" />
+          <Skeleton className="h-10 w-full rounded-lg" />
+        </nav>
+        <div className="border-t border-[var(--color-border)] p-3">
+          <div className="rounded-lg border border-[var(--color-border)] bg-neutral-50 p-3 space-y-2">
+            <Skeleton className="h-3 w-40" />
+            <Skeleton className="h-8 w-full rounded-md" />
+          </div>
+        </div>
+      </aside>
+
+      <div className="flex flex-1 flex-col pl-[260px]">
+        <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-surface)]/95 px-6">
+          <div>
+            <h1 className="text-sm font-semibold text-[var(--color-fg)]">{headerTitle}</h1>
+            <p className="text-xs text-[var(--color-fg-muted)]">{headerSubtitle}</p>
+          </div>
+          <Skeleton className="h-3 w-12" />
+        </header>
+        <main className="flex-1 p-6">
+          <div className="space-y-3">
+            <Skeleton className="h-28 w-full rounded-xl" />
+            <Skeleton className="h-28 w-full rounded-xl" />
+            <Skeleton className="h-28 w-full rounded-xl" />
+          </div>
+        </main>
       </div>
     </div>
   );

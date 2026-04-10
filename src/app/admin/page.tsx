@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { AdminPanel } from "@/components/admin/admin-panel";
-import { AppShell } from "@/components/layout/app-shell";
+import { AppShell, AppShellSkeleton } from "@/components/layout/app-shell";
 import { Spinner } from "@/components/ui/spinner";
 import { replaceOrHardNavigate } from "@/lib/auth/navigate-after-auth";
 import { useAuth } from "@/contexts/auth-context";
@@ -30,11 +30,7 @@ export default function AdminPage() {
   }, [ready, status, user, router]);
 
   if (!ready) {
-    return (
-      <div className="flex min-h-full flex-1 items-center justify-center bg-[var(--color-canvas)]">
-        <Spinner />
-      </div>
-    );
+    return <AppShellSkeleton headerTitle="Admin" headerSubtitle="Loading admin workspace" />;
   }
 
   if (status !== "authenticated" || !user) {
