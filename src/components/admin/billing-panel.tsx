@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { ApiError } from "@/lib/api/http";
 import { listMyProjects, type MyProjectRow } from "@/lib/api/workspace";
+import { listMilestones, type MilestoneRow } from "@/lib/api/planning";
 import {
   getOverdueSummary,
   issueInvoice,
@@ -32,6 +33,7 @@ export function BillingPanel() {
   const [projects, setProjects] = useState<MyProjectRow[]>([]);
   const [projectId, setProjectId] = useState("");
   const [milestoneId, setMilestoneId] = useState("");
+  const [milestones, setMilestones] = useState<MilestoneRow[]>([]);
   const [invoices, setInvoices] = useState<InvoiceItem[]>([]);
   const [payments, setPayments] = useState<PaymentItem[]>([]);
   const [stateFilter, setStateFilter] = useState("");
@@ -60,6 +62,26 @@ export function BillingPanel() {
     })();
   }, [token]);
 
+  useEffect(() => {
+    if (!token || !projectId) {
+      setMilestones([]);
+      setMilestoneId("");
+      return;
+    }
+    void (async () => {
+      try {
+        const rows = await listMilestones(projectId, token);
+        setMilestones(rows);
+        setMilestoneId((prev) =>
+          prev && rows.some((m) => m.id === prev) ? prev : rows[0]?.id ?? "",
+        );
+      } catch {
+        setMilestones([]);
+        setMilestoneId("");
+      }
+    })();
+  }, [token, projectId]);
+
   async function reload() {
     if (!token || !projectId) return;
     setLoading(true);
@@ -83,6 +105,12 @@ export function BillingPanel() {
   useEffect(() => {
     void reload();
   }, [token, projectId, stateFilter]);
+
+  useEffect(() => {
+    setInvoiceForPayment((prev) =>
+      prev && invoices.some((inv) => inv.id === prev) ? prev : invoices[0]?.id ?? "",
+    );
+  }, [invoices]);
 
   const totalPages = Math.max(1, Math.ceil(payments.length / pageSize));
   const paged = useMemo(() => payments.slice((page - 1) * pageSize, page * pageSize), [payments, page, pageSize]);
@@ -164,13 +192,37 @@ export function BillingPanel() {
         <div className="grid gap-3 md:grid-cols-2">
           <form onSubmit={onIssueInvoice} className="rounded-lg border border-neutral-200 p-3 space-y-2">
             <h3 className="text-sm font-semibold">Issue invoice</h3>
-            <input value={milestoneId} onChange={(e) => setMilestoneId(e.target.value)} placeholder="Milestone ID" className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm" />
+            <select
+              value={milestoneId}
+              onChange={(e) => setMilestoneId(e.target.value)}
+              className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
+              disabled={milestones.length === 0}
+            >
+              <option value="">{milestones.length ? "Select milestone" : "No milestones available"}</option>
+              {milestones.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.orderNo}. {m.name} ({m.state})
+                </option>
+              ))}
+            </select>
             <input value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Amount (optional)" className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm" />
             <button className="rounded-md border border-neutral-900 bg-neutral-900 px-3 py-2 text-xs font-semibold text-white">Issue invoice</button>
           </form>
           <form onSubmit={onSubmitPayment} className="rounded-lg border border-neutral-200 p-3 space-y-2">
             <h3 className="text-sm font-semibold">Submit payment</h3>
-            <input value={invoiceForPayment} onChange={(e) => setInvoiceForPayment(e.target.value)} placeholder="Invoice ID" className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm" />
+            <select
+              value={invoiceForPayment}
+              onChange={(e) => setInvoiceForPayment(e.target.value)}
+              className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
+              disabled={invoices.length === 0}
+            >
+              <option value="">{invoices.length ? "Select invoice" : "No invoices available"}</option>
+              {invoices.map((inv) => (
+                <option key={inv.id} value={inv.id}>
+                  {inv.invoiceNumber} - {inv.amount} ({inv.state})
+                </option>
+              ))}
+            </select>
             <input value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} placeholder="Amount" className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm" />
             <button className="rounded-md border border-neutral-900 bg-neutral-900 px-3 py-2 text-xs font-semibold text-white">Submit payment</button>
           </form>

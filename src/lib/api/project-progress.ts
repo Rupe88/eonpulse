@@ -45,6 +45,20 @@ export async function getProjectProgress(projectId: string, accessToken: string)
 }
 
 export type PortfolioProgressPayload = {
+  filters: {
+    applied: {
+      workspaceId: string | null;
+      clientId: string | null;
+      state: string | null;
+      dueFrom: string | null;
+      dueTo: string | null;
+    };
+    options: {
+      workspaces: Array<{ id: string; name: string }>;
+      clients: Array<{ id: string; name: string }>;
+      states: string[];
+    };
+  };
   summary: {
     projectsCount: number;
     totalTasks: number;
@@ -92,6 +106,23 @@ export type PortfolioProgressPayload = {
   }>;
 };
 
-export async function getPortfolioProgress(accessToken: string) {
-  return apiGet<PortfolioProgressPayload>("/dashboard/portfolio", accessToken);
+export async function getPortfolioProgress(
+  accessToken: string,
+  filters?: {
+    workspaceId?: string;
+    clientId?: string;
+    state?: string;
+    dueFrom?: string;
+    dueTo?: string;
+  },
+) {
+  const params = new URLSearchParams();
+  if (filters?.workspaceId) params.set("workspaceId", filters.workspaceId);
+  if (filters?.clientId) params.set("clientId", filters.clientId);
+  if (filters?.state) params.set("state", filters.state);
+  if (filters?.dueFrom) params.set("dueFrom", filters.dueFrom);
+  if (filters?.dueTo) params.set("dueTo", filters.dueTo);
+  const query = params.toString();
+  const path = query ? `/dashboard/portfolio?${query}` : "/dashboard/portfolio";
+  return apiGet<PortfolioProgressPayload>(path, accessToken);
 }

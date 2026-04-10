@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import { ApiError } from "@/lib/api/http";
 import { listMyProjects, type MyProjectRow } from "@/lib/api/workspace";
@@ -26,6 +27,9 @@ function healthTone(health: ProjectProgressPayload["summary"]["health"]) {
 }
 
 export function ProgressPanel() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { accessToken } = useAuth();
   const token = accessToken ?? "";
 
@@ -37,6 +41,59 @@ export function ProgressPanel() {
   const [loadingPortfolio, setLoadingPortfolio] = useState(false);
   const [loadingProjects, setLoadingProjects] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "failed">("idle");
+  const [portfolioFilters, setPortfolioFilters] = useState<{
+    workspaceId: string;
+    clientId: string;
+    state: string;
+    dueFrom: string;
+    dueTo: string;
+  }>({
+    workspaceId: "",
+    clientId: "",
+    state: "",
+    dueFrom: "",
+    dueTo: "",
+  });
+
+  useEffect(() => {
+    const next = {
+      workspaceId: searchParams.get("workspaceId") ?? "",
+      clientId: searchParams.get("clientId") ?? "",
+      state: searchParams.get("state") ?? "",
+      dueFrom: searchParams.get("dueFrom") ?? "",
+      dueTo: searchParams.get("dueTo") ?? "",
+    };
+    setPortfolioFilters((prev) => {
+      if (
+        prev.workspaceId === next.workspaceId &&
+        prev.clientId === next.clientId &&
+        prev.state === next.state &&
+        prev.dueFrom === next.dueFrom &&
+        prev.dueTo === next.dueTo
+      ) {
+        return prev;
+      }
+      return next;
+    });
+  }, [searchParams]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    const apply = (key: string, value: string) => {
+      if (value) params.set(key, value);
+      else params.delete(key);
+    };
+    apply("workspaceId", portfolioFilters.workspaceId);
+    apply("clientId", portfolioFilters.clientId);
+    apply("state", portfolioFilters.state);
+    apply("dueFrom", portfolioFilters.dueFrom);
+    apply("dueTo", portfolioFilters.dueTo);
+    const query = params.toString();
+    const current = searchParams.toString();
+    if (query === current) return;
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }, [portfolioFilters, pathname, router, searchParams]);
 
   useEffect(() => {
     if (!token) return;
@@ -59,7 +116,13 @@ export function ProgressPanel() {
     void (async () => {
       setLoadingPortfolio(true);
       try {
-        const res = await getPortfolioProgress(token);
+        const res = await getPortfolioProgress(token, {
+          workspaceId: portfolioFilters.workspaceId || undefined,
+          clientId: portfolioFilters.clientId || undefined,
+          state: portfolioFilters.state || undefined,
+          dueFrom: portfolioFilters.dueFrom || undefined,
+          dueTo: portfolioFilters.dueTo || undefined,
+        });
         setPortfolio(res);
       } catch (e) {
         setError(errorMessage(e));
@@ -67,7 +130,7 @@ export function ProgressPanel() {
         setLoadingPortfolio(false);
       }
     })();
-  }, [token]);
+  }, [token, portfolioFilters]);
 
   useEffect(() => {
     if (!token || !projectId) return;
@@ -88,11 +151,149 @@ export function ProgressPanel() {
   const milestoneRows = useMemo(() => payload?.milestones ?? [], [payload]);
   const maxTrend = Math.max(...(portfolio?.completionTrend.map((x) => x.completed) ?? [1]));
 
+  function downloadCsv(filename: string, headers: string[], rows: Array<Array<string | number>>) {
+    const csv = [
+      headers.join(","),
+      ...rows.map((r) => r.map((x) => `"${String(x).replace(/"/g, '""')}"`).join(",")),
+    ].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function exportRankingCsv() {
+    if (!portfolio) return;
+    downloadCsv(
+      `portfolio-project-ranking-${new Date().toISOString().slice(0, 10)}.csv`,
+      ["Project", "Code", "Workspace", "Client", "State", "Health", "Risk Score", "Completion %", "Overdue", "Blockers", "Review Pending", "Payments Pending", "Approved 7d"],
+      portfolio.projectRankings.map((r) => [
+        r.name,
+        r.code,
+        r.workspace.name,
+        r.client.name,
+        r.state,
+        r.health,
+        r.riskScore,
+        r.completionPct,
+        r.overdueTasks,
+        r.blockerThreads,
+        r.reviewPending,
+        r.paymentsPending,
+        r.completed7d,
+      ]),
+    );
+  }
+
+  function exportThroughputCsv() {
+    if (!portfolio) return;
+    downloadCsv(
+      `portfolio-team-throughput-${new Date().toISOString().slice(0, 10)}.csv`,
+      ["Name", "Email", "Approved Tasks (7d)"],
+      portfolio.teamThroughput.map((t) => [t.name, t.email, t.approvedTasks]),
+    );
+  }
+
+  function resetPortfolioFilters() {
+    setPortfolioFilters({
+      workspaceId: "",
+      clientId: "",
+      state: "",
+      dueFrom: "",
+      dueTo: "",
+    });
+  }
+
+  async function copyFilteredViewLink() {
+    try {
+      if (typeof window === "undefined") return;
+      await navigator.clipboard.writeText(window.location.href);
+      setCopyStatus("copied");
+    } catch {
+      setCopyStatus("failed");
+    } finally {
+      window.setTimeout(() => setCopyStatus("idle"), 1800);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <section className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
         <h3 className="text-sm font-semibold text-neutral-900">Portfolio Overview</h3>
         <p className="mt-1 text-xs text-neutral-500">Multi-project health, throughput, risk ranking, and completion trend.</p>
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-7">
+          <select
+            value={portfolioFilters.workspaceId}
+            onChange={(e) => setPortfolioFilters((p) => ({ ...p, workspaceId: e.target.value }))}
+            className="rounded-md border border-neutral-300 px-3 py-2 text-sm"
+          >
+            <option value="">All workspaces</option>
+            {(portfolio?.filters.options.workspaces ?? []).map((w) => (
+              <option key={w.id} value={w.id}>
+                {w.name}
+              </option>
+            ))}
+          </select>
+          <select
+            value={portfolioFilters.clientId}
+            onChange={(e) => setPortfolioFilters((p) => ({ ...p, clientId: e.target.value }))}
+            className="rounded-md border border-neutral-300 px-3 py-2 text-sm"
+          >
+            <option value="">All clients</option>
+            {(portfolio?.filters.options.clients ?? []).map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+          <select
+            value={portfolioFilters.state}
+            onChange={(e) => setPortfolioFilters((p) => ({ ...p, state: e.target.value }))}
+            className="rounded-md border border-neutral-300 px-3 py-2 text-sm"
+          >
+            <option value="">All states</option>
+            {(portfolio?.filters.options.states ?? []).map((state) => (
+              <option key={state} value={state}>
+                {state}
+              </option>
+            ))}
+          </select>
+          <input
+            type="date"
+            value={portfolioFilters.dueFrom}
+            onChange={(e) => setPortfolioFilters((p) => ({ ...p, dueFrom: e.target.value }))}
+            className="rounded-md border border-neutral-300 px-3 py-2 text-sm"
+            aria-label="Due date from"
+          />
+          <input
+            type="date"
+            value={portfolioFilters.dueTo}
+            onChange={(e) => setPortfolioFilters((p) => ({ ...p, dueTo: e.target.value }))}
+            className="rounded-md border border-neutral-300 px-3 py-2 text-sm"
+            aria-label="Due date to"
+          />
+          <button
+            type="button"
+            onClick={resetPortfolioFilters}
+            className="rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm font-semibold text-neutral-700"
+          >
+            Reset filters
+          </button>
+          <button
+            type="button"
+            onClick={() => void copyFilteredViewLink()}
+            className="rounded-md border border-neutral-900 bg-neutral-900 px-3 py-2 text-sm font-semibold text-white"
+          >
+            {copyStatus === "copied"
+              ? "Link copied"
+              : copyStatus === "failed"
+                ? "Copy failed"
+                : "Copy filtered view"}
+          </button>
+        </div>
         {loadingPortfolio ? (
           <div className="mt-4">
             <PortfolioSkeleton />
@@ -149,7 +350,16 @@ export function ProgressPanel() {
 
             <div className="grid gap-4 lg:grid-cols-2">
               <div className="rounded-xl border border-neutral-200 p-4">
-                <h4 className="text-sm font-semibold text-neutral-900">Project Ranking (Risk First)</h4>
+                <div className="flex items-center justify-between gap-2">
+                  <h4 className="text-sm font-semibold text-neutral-900">Project Ranking (Risk First)</h4>
+                  <button
+                    type="button"
+                    onClick={exportRankingCsv}
+                    className="rounded-md border border-neutral-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-neutral-700"
+                  >
+                    Export CSV
+                  </button>
+                </div>
                 <div className="mt-3 overflow-x-auto">
                   <table className="w-full min-w-[760px] text-left text-sm">
                     <thead className="border-b border-neutral-200 bg-neutral-50 text-xs font-semibold uppercase tracking-wide text-neutral-500">
@@ -185,7 +395,16 @@ export function ProgressPanel() {
                 </div>
               </div>
               <div className="rounded-xl border border-neutral-200 p-4">
-                <h4 className="text-sm font-semibold text-neutral-900">Team Throughput (7d)</h4>
+                <div className="flex items-center justify-between gap-2">
+                  <h4 className="text-sm font-semibold text-neutral-900">Team Throughput (7d)</h4>
+                  <button
+                    type="button"
+                    onClick={exportThroughputCsv}
+                    className="rounded-md border border-neutral-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-neutral-700"
+                  >
+                    Export CSV
+                  </button>
+                </div>
                 <div className="mt-3 overflow-x-auto">
                   <table className="w-full min-w-[420px] text-left text-sm">
                     <thead className="border-b border-neutral-200 bg-neutral-50 text-xs font-semibold uppercase tracking-wide text-neutral-500">
