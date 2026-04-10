@@ -124,8 +124,8 @@ export async function createProject(
     description?: string;
     assignedManagerId?: string;
   },
-) {
-  return apiPost("/workspace/projects", accessToken, body);
+): Promise<WorkspaceProjectRow> {
+  return apiPost<WorkspaceProjectRow>("/workspace/projects", accessToken, body);
 }
 
 export async function updateProject(
@@ -164,7 +164,14 @@ export async function createMilestone(
     billingAmount?: number;
     paymentGateMode?: "HARD_GATE" | "SOFT_GATE" | "NO_GATE";
   },
-) {
+): Promise<{
+  id: string;
+  name: string;
+  orderNo: number;
+  state: string;
+  billingAmount: string | null;
+  paymentGateMode: string;
+}> {
   return apiPost("/workspace/milestones", accessToken, body);
 }
 

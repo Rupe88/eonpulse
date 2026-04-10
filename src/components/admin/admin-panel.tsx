@@ -460,7 +460,7 @@ export function AdminPanel() {
               setPending("client");
               setError(null);
               setBanner(null);
-              await createClient(token, {
+              const created = await createClient(token, {
                 workspaceId,
                 name,
                 ...(legalName ? { legalName } : {}),
@@ -469,7 +469,8 @@ export function AdminPanel() {
               });
               setBanner("Client created.");
               form.reset();
-              await refreshClients();
+              setClients((prev) => [created, ...prev]);
+              setClientId(created.id);
             } catch (e) {
               setError(errMessage(e));
             } finally {
@@ -703,7 +704,7 @@ export function AdminPanel() {
               setPending("project");
               setError(null);
               setBanner(null);
-              await createProject(token, {
+              const created = await createProject(token, {
                 workspaceId,
                 clientId,
                 name,
@@ -711,7 +712,16 @@ export function AdminPanel() {
               });
               setBanner("Project created.");
               form.reset();
-              await refreshProjects();
+              const selectedClientName =
+                clients.find((c) => c.id === created.clientId)?.name ?? "Client";
+              setProjects((prev) => [
+                {
+                  ...created,
+                  client: created.client ?? { name: selectedClientName },
+                },
+                ...prev,
+              ]);
+              setProjectId(created.id);
             } catch (e) {
               setError(errMessage(e));
             } finally {
@@ -968,7 +978,7 @@ export function AdminPanel() {
               setPending("milestone");
               setError(null);
               setBanner(null);
-              await createMilestone(token, {
+              const created = await createMilestone(token, {
                 projectId,
                 name,
                 orderNo,
@@ -977,9 +987,10 @@ export function AdminPanel() {
               });
               setBanner("Milestone created.");
               form.reset();
-              const m = await listMilestones(projectId, token);
-              setMilestones(m);
-              if (m[0]) setMilestoneId(m[0].id);
+              setMilestones((prev) =>
+                [...prev, created].sort((a, b) => a.orderNo - b.orderNo),
+              );
+              setMilestoneId(created.id);
             } catch (e) {
               setError(errMessage(e));
             } finally {
@@ -1069,12 +1080,17 @@ export function AdminPanel() {
               setPending("section");
               setError(null);
               setBanner(null);
-              await createSection(token, { milestoneId, name, orderNo });
+              const created = await createSection(token, {
+                milestoneId,
+                name,
+                orderNo,
+              });
               setBanner("Section created.");
               form.reset();
-              const s = await listSections(milestoneId, token);
-              setSections(s);
-              if (s[0]) setSectionId(s[0].id);
+              setSections((prev) =>
+                [...prev, created].sort((a, b) => a.orderNo - b.orderNo),
+              );
+              setSectionId(created.id);
             } catch (e) {
               setError(errMessage(e));
             } finally {
@@ -1160,8 +1176,16 @@ export function AdminPanel() {
                 setBanner("Task created. Assign it below or the worker won’t see it in their task list.");
               }
               form.reset();
-              const t = await listTasksInSection(sectionId, token);
-              setTasks(t);
+              setTasks((prev) => [
+                {
+                  id: created.id,
+                  title,
+                  state: "BACKLOG",
+                  dueDate: due ? new Date(due).toISOString() : null,
+                  clientVisible,
+                },
+                ...prev,
+              ]);
             } catch (e) {
               setError(errMessage(e));
             } finally {

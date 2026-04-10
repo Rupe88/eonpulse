@@ -4,7 +4,11 @@ export async function createSection(
   accessToken: string,
   body: { milestoneId: string; name: string; orderNo: number },
 ) {
-  return apiPost("/tasks/sections", accessToken, body);
+  return apiPost<{ id: string; name: string; orderNo: number }>(
+    "/tasks/sections",
+    accessToken,
+    body,
+  );
 }
 
 export async function createTask(

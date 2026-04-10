@@ -124,8 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const pair = await authApi.verifyOtp(email, code);
         applyTokens(pair);
-        const me = await loadUser(pair.accessToken);
-        setUser(me);
+        setUser(pair.user);
         setStatus("authenticated");
       } catch (e) {
         setStatus("unauthenticated");
@@ -142,8 +141,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const pair = await authApi.register({ email, password, name });
         applyTokens(pair);
-        const me = await loadUser(pair.accessToken);
-        setUser(me);
+        setUser(pair.user);
         setStatus("authenticated");
       } catch (e) {
         setStatus("unauthenticated");
@@ -160,8 +158,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const pair = await authApi.loginWithPassword(email, password);
         applyTokens(pair);
-        const me = await loadUser(pair.accessToken);
-        setUser(me);
+        setUser(pair.user);
         setStatus("authenticated");
       } catch (e) {
         setStatus("unauthenticated");
@@ -177,8 +174,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const pair = await authApi.refreshTokens(rt);
       applyTokens(pair);
-      const me = await loadUser(pair.accessToken);
-      setUser(me);
+      setUser(pair.user);
       setStatus("authenticated");
       return true;
     } catch {

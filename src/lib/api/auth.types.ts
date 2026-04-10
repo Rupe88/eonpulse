@@ -13,6 +13,7 @@ export type RequestOtpResponse = {
 export type TokenPair = {
   accessToken: string;
   refreshToken: string;
+  user: AuthUser;
 };
 
 export type LogoutResponse = {
