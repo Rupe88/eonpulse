@@ -1,26 +1,63 @@
 @import "tailwindcss";
 
+/* Black & white / grayscale workspace — no chroma accents */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --color-canvas: #f5f5f5;
+  --color-surface: #ffffff;
+  --color-sidebar: #ffffff;
+  --color-border: #e5e5e5;
+  --color-fg: #0a0a0a;
+  --color-fg-muted: #737373;
+  --color-primary: #171717;
+  --color-primary-hover: #404040;
+  --color-primary-strong: #0a0a0a;
+  --color-primary-muted: #e5e5e5;
+  --color-danger: #525252;
+  --background: var(--color-canvas);
+  --foreground: var(--color-fg);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-sans: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-canvas);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-fg);
+  outline-offset: 2px;
+}
+
+.btn-primary {
+  @apply inline-flex items-center justify-center rounded-lg px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition;
+  background-color: var(--color-primary);
+}
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--color-primary-hover);
+}
+.btn-primary:disabled {
+  @apply cursor-not-allowed opacity-50;
+}
+
+.btn-secondary {
+  @apply inline-flex items-center justify-center rounded-lg border border-neutral-200 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-900 shadow-sm transition hover:bg-neutral-50;
+}
+
+.input-field {
+  @apply w-full rounded-lg border border-neutral-200 bg-white px-3 py-2.5 text-sm text-neutral-900 shadow-sm transition placeholder:text-neutral-400;
+}
+.input-field:focus {
+  @apply border-neutral-400 ring-2 ring-neutral-900/10;
+}
+
+.card-elevated {
+  @apply rounded-xl border border-neutral-200 bg-white shadow-sm shadow-neutral-900/5;
 }
