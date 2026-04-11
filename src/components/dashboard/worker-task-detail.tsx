@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Spinner } from "@/components/ui/spinner";
 import { taskStateLabel } from "@/components/dashboard/task-state-label";
 import { nextStatesForWorker } from "@/components/dashboard/worker-state-transitions";
@@ -12,6 +12,7 @@ import {
   getWorkerTaskTimeline,
   patchTaskChecklistItem,
   patchWorkerTaskState,
+  postWorkerEvidenceFile,
   postWorkerEvidenceLink,
   type WorkerTaskDetail,
   type WorkerTaskTimeline,
@@ -35,6 +36,24 @@ function em(e: unknown): string {
   if (e instanceof ApiError) return e.message;
   if (e instanceof Error) return e.message;
   return "Something went wrong";
+}
+
+/** PDF + common images — keep in sync with `isAllowedEvidenceFile` and the file input `accept` attribute. */
+const EVIDENCE_ACCEPT =
+  "application/pdf,image/jpeg,image/png,image/gif,image/webp,image/svg+xml,.pdf,.jpg,.jpeg,.png,.gif,.webp,.svg";
+
+function isAllowedEvidenceFile(file: File): boolean {
+  const allowedMime = new Set([
+    "application/pdf",
+    "image/jpeg",
+    "image/png",
+    "image/gif",
+    "image/webp",
+    "image/svg+xml",
+  ]);
+  if (file.type && allowedMime.has(file.type)) return true;
+  const ext = file.name.split(".").pop()?.toLowerCase();
+  return ext === "pdf" || ["jpg", "jpeg", "png", "gif", "webp", "svg"].includes(ext ?? "");
 }
 
 function projectRoleLabel(role: string): string {
@@ -68,6 +87,10 @@ export function WorkerTaskDetail({ taskId }: { taskId: string }) {
   const [busy, setBusy] = useState(false);
   const [evidenceUrl, setEvidenceUrl] = useState("");
   const [evidenceLabel, setEvidenceLabel] = useState("");
+  const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
+  const [evidenceUploadBusy, setEvidenceUploadBusy] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const evidenceFileInputRef = useRef<HTMLInputElement>(null);
   const [reviewerId, setReviewerId] = useState("");
   const [projectMembers, setProjectMembers] = useState<ProjectMemberOption[]>([]);
   const [projectMembersLoading, setProjectMembersLoading] = useState(false);
@@ -255,6 +278,35 @@ export function WorkerTaskDetail({ taskId }: { taskId: string }) {
       setError(em(err));
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function onEvidenceUpload(e: React.FormEvent) {
+    e.preventDefault();
+    const token = resolveToken(accessToken);
+    if (!token || !evidenceFile) return;
+    if (!isAllowedEvidenceFile(evidenceFile)) {
+      setError("Only PDF and image files are allowed (JPEG, PNG, GIF, WebP, SVG).");
+      return;
+    }
+    const maxBytes = 25 * 1024 * 1024;
+    if (evidenceFile.size > maxBytes) {
+      setError("File is too large (max 25 MB).");
+      return;
+    }
+    setEvidenceUploadBusy(true);
+    setUploadProgress(0);
+    setError(null);
+    try {
+      await postWorkerEvidenceFile(token, taskId, evidenceFile, (pct) => setUploadProgress(pct));
+      setEvidenceFile(null);
+      if (evidenceFileInputRef.current) evidenceFileInputRef.current.value = "";
+      await load();
+    } catch (err) {
+      setError(em(err));
+    } finally {
+      setEvidenceUploadBusy(false);
+      setUploadProgress(null);
     }
   }
 
@@ -522,9 +574,62 @@ export function WorkerTaskDetail({ taskId }: { taskId: string }) {
       </section>
 
       <section className="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm">
-        <h2 className="text-sm font-semibold text-neutral-900">Evidence link</h2>
-        <p className="mt-1 text-xs text-neutral-500">Attach a URL to designs, docs, or demos.</p>
-        <form onSubmit={onEvidenceLink} className="mt-4 grid gap-3 sm:grid-cols-2">
+        <h2 className="text-sm font-semibold text-neutral-900">Evidence</h2>
+        <p className="mt-1 text-xs text-neutral-500">
+          Upload a PDF or image (stored securely) or paste a link below for other assets. Max 25 MB per file.
+        </p>
+
+        <form onSubmit={onEvidenceUpload} className="mt-5 rounded-lg border border-neutral-100 bg-neutral-50/80 p-4">
+          <p className="text-xs font-medium text-neutral-700">Upload file</p>
+          <p className="mt-0.5 text-[11px] text-neutral-500">
+            PDF, JPEG, PNG, GIF, WebP, or SVG — files are uploaded to cloud storage and listed below.
+          </p>
+          <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end">
+            <label className="flex min-w-0 flex-1 flex-col gap-1">
+              <span className="text-xs font-medium text-neutral-600">Choose file</span>
+              <input
+                ref={evidenceFileInputRef}
+                type="file"
+                accept={EVIDENCE_ACCEPT}
+                className="text-sm file:mr-3 file:rounded-md file:border file:border-neutral-300 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-neutral-800"
+                disabled={evidenceUploadBusy || busy || reviewBusy}
+                onChange={(e) => {
+                  const f = e.target.files?.[0] ?? null;
+                  if (f && !isAllowedEvidenceFile(f)) {
+                    setError("Only PDF and image files are allowed (JPEG, PNG, GIF, WebP, SVG).");
+                    setEvidenceFile(null);
+                    e.target.value = "";
+                    return;
+                  }
+                  setEvidenceFile(f);
+                }}
+              />
+            </label>
+            <button
+              type="submit"
+              disabled={!evidenceFile || evidenceUploadBusy || busy || reviewBusy}
+              className="inline-flex min-h-[40px] shrink-0 items-center justify-center rounded-md bg-neutral-900 px-4 py-2 text-sm font-semibold text-white hover:bg-neutral-800 disabled:opacity-40"
+            >
+              {evidenceUploadBusy ? "Uploading…" : "Upload"}
+            </button>
+          </div>
+          {uploadProgress !== null ? (
+            <div className="mt-4" aria-live="polite">
+              <div className="h-2 w-full overflow-hidden rounded-full bg-neutral-200">
+                <div
+                  className="h-full rounded-full bg-neutral-900 transition-[width] duration-150 ease-out"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+              <p className="mt-1.5 text-xs tabular-nums text-neutral-600">
+                Uploading… {uploadProgress}%
+              </p>
+            </div>
+          ) : null}
+        </form>
+
+        <form onSubmit={onEvidenceLink} className="mt-5 grid gap-3 border-t border-neutral-100 pt-5 sm:grid-cols-2">
+          <p className="text-xs font-medium text-neutral-700 sm:col-span-2">Or add a link</p>
           <input
             className="input-field sm:col-span-2"
             value={evidenceUrl}
@@ -543,7 +648,7 @@ export function WorkerTaskDetail({ taskId }: { taskId: string }) {
             <button
               type="submit"
               disabled={busy || reviewBusy}
-              className="w-full rounded-md border border-neutral-200 bg-neutral-50 py-2 text-sm font-semibold text-neutral-900 hover:bg-neutral-100 disabled:opacity-40"
+              className="w-full rounded-md border border-neutral-200 bg-white py-2 text-sm font-semibold text-neutral-900 hover:bg-neutral-50 disabled:opacity-40"
             >
               Add link
             </button>

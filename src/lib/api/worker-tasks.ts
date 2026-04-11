@@ -1,4 +1,4 @@
-import { apiGet, apiPatch, apiPost } from "./client";
+import { apiGet, apiPatch, apiPost, apiPostMultipart } from "./client";
 
 /** GET /tasks/worker/queue */
 export type WorkerQueueRow = {
@@ -173,6 +173,24 @@ export async function postWorkerEvidenceLink(
   body: { fileUrl: string; label?: string },
 ) {
   return apiPost(`/tasks/worker/${encodeURIComponent(taskId)}/evidence-link`, accessToken, body);
+}
+
+export async function postWorkerEvidenceFile(
+  accessToken: string,
+  taskId: string,
+  file: File,
+  onUploadProgress?: (percent: number) => void,
+) {
+  const fd = new FormData();
+  fd.append("file", file);
+  return apiPostMultipart<{
+    id: string;
+    taskId: string;
+    fileUrl: string;
+    label: string | null;
+    uploadedBy: string;
+    createdAt: string;
+  }>(`/tasks/worker/${encodeURIComponent(taskId)}/evidence`, accessToken, fd, onUploadProgress);
 }
 
 export async function getWorkerTaskTimeline(
