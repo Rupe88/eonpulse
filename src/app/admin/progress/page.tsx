@@ -7,12 +7,8 @@ import { AppShell, AppShellSkeleton } from "@/components/layout/app-shell";
 import { ProgressPanel } from "@/components/admin/progress-panel";
 import { Spinner } from "@/components/ui/spinner";
 import { replaceOrHardNavigate } from "@/lib/auth/navigate-after-auth";
+import { canAccessAdminPanel } from "@/lib/auth/role-gates";
 import { useAuth } from "@/contexts/auth-context";
-
-function canAccessAdmin(role: string | undefined): boolean {
-  const r = String(role ?? "").toUpperCase();
-  return r === "ADMIN" || r === "SUB_ADMIN";
-}
 
 export default function AdminProgressPage() {
   const { ready, user, status } = useAuth();
@@ -24,7 +20,7 @@ export default function AdminProgressPage() {
       replaceOrHardNavigate(router, "/login?next=%2Fadmin%2Fprogress", "/admin/progress");
       return;
     }
-    if (!canAccessAdmin(user.role)) router.replace("/dashboard");
+    if (!canAccessAdminPanel(user.role)) router.replace("/dashboard");
   }, [ready, status, user, router]);
 
   if (!ready) return <AppShellSkeleton headerTitle="Project Progress" headerSubtitle="Loading analytics module" />;
@@ -39,7 +35,7 @@ export default function AdminProgressPage() {
       </div>
     );
   }
-  if (!canAccessAdmin(user.role)) return null;
+  if (!canAccessAdminPanel(user.role)) return null;
 
   return (
     <AppShell

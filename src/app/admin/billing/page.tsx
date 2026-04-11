@@ -7,12 +7,8 @@ import { AppShell, AppShellSkeleton } from "@/components/layout/app-shell";
 import { BillingPanel } from "@/components/admin/billing-panel";
 import { Spinner } from "@/components/ui/spinner";
 import { replaceOrHardNavigate } from "@/lib/auth/navigate-after-auth";
+import { canAccessAdminPanel } from "@/lib/auth/role-gates";
 import { useAuth } from "@/contexts/auth-context";
-
-function canAccessAdmin(role: string | undefined): boolean {
-  const r = String(role ?? "").toUpperCase();
-  return r === "ADMIN" || r === "SUB_ADMIN";
-}
 
 export default function AdminBillingPage() {
   const { ready, user, status } = useAuth();
@@ -24,7 +20,7 @@ export default function AdminBillingPage() {
       replaceOrHardNavigate(router, "/login?next=%2Fadmin%2Fbilling", "/admin/billing");
       return;
     }
-    if (!canAccessAdmin(user.role)) {
+    if (!canAccessAdminPanel(user.role)) {
       router.replace("/dashboard");
     }
   }, [ready, status, user, router]);
@@ -41,7 +37,7 @@ export default function AdminBillingPage() {
       </div>
     );
   }
-  if (!canAccessAdmin(user.role)) return null;
+  if (!canAccessAdminPanel(user.role)) return null;
 
   return (
     <AppShell headerTitle="Billing" headerSubtitle="Invoices, payments, verification and overdue tracking" headerClassName="px-6" mainClassName="flex-1 px-6 py-8">

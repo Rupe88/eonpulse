@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { useAuth } from "@/contexts/auth-context";
-import { canAccessAdminPanel } from "@/lib/auth/role-gates";
+import { canAccessAdminPanel, isGlobalSubAdmin } from "@/lib/auth/role-gates";
 import { Skeleton } from "@/components/ui/skeleton";
 
 type NavItem = {
@@ -18,6 +18,12 @@ const baseNav: NavItem[] = [
   { href: "/dashboard", label: "Overview", icon: LayoutGridIcon },
   { href: "/dashboard/projects", label: "Projects", icon: FolderIcon },
   { href: "/dashboard/tasks", label: "Tasks", icon: CheckSquareIcon },
+];
+
+/** Global sub-admin: delivery control only (no generic worker overview). */
+const subAdminNav: NavItem[] = [
+  { href: "/dashboard", label: "Delivery", icon: LayoutGridIcon },
+  { href: "/dashboard/tasks", label: "Task queue", icon: CheckSquareIcon },
 ];
 
 function navItemActive(pathname: string, href: string): boolean {
@@ -40,7 +46,7 @@ function navItemActive(pathname: string, href: string): boolean {
     return pathname === "/admin/ops" || pathname.startsWith("/admin/ops/");
   }
   if (href === "/dashboard") {
-    return pathname === "/dashboard";
+    return pathname === "/dashboard" || pathname === "/dashboard/";
   }
   if (href === "/dashboard/projects") {
     return pathname.startsWith("/dashboard/projects");
@@ -196,8 +202,8 @@ export function AppShell({
   const showAdmin = canAccessAdminPanel(user?.role);
   const role = String(user?.role ?? "").toUpperCase();
 
-  const nav: NavItem[] = [...baseNav];
-  if (role === "ADMIN" || role === "SUB_ADMIN") {
+  const nav: NavItem[] = isGlobalSubAdmin(role) ? [...subAdminNav] : [...baseNav];
+  if (role === "ADMIN") {
     nav.push(
       { href: "/dashboard/client", label: "Client Workspace", icon: ReviewIcon },
       { href: "/dashboard/finance", label: "Finance Workspace", icon: BillingIcon },

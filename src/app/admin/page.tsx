@@ -7,12 +7,8 @@ import { AdminPanel } from "@/components/admin/admin-panel";
 import { AppShell, AppShellSkeleton } from "@/components/layout/app-shell";
 import { Spinner } from "@/components/ui/spinner";
 import { replaceOrHardNavigate } from "@/lib/auth/navigate-after-auth";
+import { canAccessAdminPanel } from "@/lib/auth/role-gates";
 import { useAuth } from "@/contexts/auth-context";
-
-function canAccessAdmin(role: string | undefined): boolean {
-  const r = String(role ?? "").toUpperCase();
-  return r === "ADMIN" || r === "SUB_ADMIN";
-}
 
 export default function AdminPage() {
   const { ready, user, status } = useAuth();
@@ -24,7 +20,7 @@ export default function AdminPage() {
       replaceOrHardNavigate(router, "/login?next=%2Fadmin", "/admin");
       return;
     }
-    if (!canAccessAdmin(user.role)) {
+    if (!canAccessAdminPanel(user.role)) {
       router.replace("/dashboard");
     }
   }, [ready, status, user, router]);
@@ -50,14 +46,15 @@ export default function AdminPage() {
     );
   }
 
-  if (!canAccessAdmin(user.role)) {
+  if (!canAccessAdminPanel(user.role)) {
     return (
       <div className="flex min-h-full flex-1 flex-col items-center justify-center gap-6 bg-[var(--color-canvas)] px-4">
         <div className="max-w-md rounded-xl border border-neutral-200 bg-white p-8 text-center shadow-sm">
           <h1 className="text-lg font-semibold text-neutral-900">Admin access required</h1>
           <p className="mt-2 text-sm text-neutral-600">
-            Your account ({user.email}) doesn’t have the Admin or Sub-admin role. Use a seeded admin user (e.g.{" "}
-            <span className="font-mono text-xs">admin@eonpulse.com</span>) or ask an administrator to update your role.
+            Your account ({user.email}) doesn’t have the global <strong>Admin</strong> role. Sub-admins use{" "}
+            <strong>Dashboard → Delivery</strong> to assign work and run review. Use a seeded admin user (e.g.{" "}
+            <span className="font-mono text-xs">admin@eonpulse.com</span>) for workspace setup.
           </p>
           <Link
             href="/dashboard"

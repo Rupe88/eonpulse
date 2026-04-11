@@ -86,3 +86,27 @@ export async function assignTask(
 ) {
   return apiPost(`/tasks/${encodeURIComponent(taskId)}/assign`, accessToken, body);
 }
+
+/** Tasks with no executor assignee (dashboard assignment for sub-admins). */
+export type UnassignedExecutorTaskRow = {
+  id: string;
+  title: string;
+  state: string;
+  dueDate: string | null;
+  parentTaskId: string | null;
+  section: {
+    id: string;
+    name: string;
+    milestone: { id: string; name: string; orderNo: number };
+  };
+};
+
+export async function listUnassignedExecutorTasks(
+  accessToken: string,
+  projectId: string,
+): Promise<UnassignedExecutorTaskRow[]> {
+  return apiGet<UnassignedExecutorTaskRow[]>(
+    `/tasks/projects/${encodeURIComponent(projectId)}/unassigned-executor`,
+    accessToken,
+  );
+}

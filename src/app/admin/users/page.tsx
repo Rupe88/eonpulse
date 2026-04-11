@@ -7,12 +7,8 @@ import { AppShell, AppShellSkeleton } from "@/components/layout/app-shell";
 import { UsersManagementPanel } from "@/components/admin/users-management-panel";
 import { Spinner } from "@/components/ui/spinner";
 import { replaceOrHardNavigate } from "@/lib/auth/navigate-after-auth";
+import { canAccessAdminPanel } from "@/lib/auth/role-gates";
 import { useAuth } from "@/contexts/auth-context";
-
-function canAccessAdmin(role: string | undefined): boolean {
-  const r = String(role ?? "").toUpperCase();
-  return r === "ADMIN" || r === "SUB_ADMIN";
-}
 
 export default function AdminUsersPage() {
   const { ready, user, status } = useAuth();
@@ -24,7 +20,7 @@ export default function AdminUsersPage() {
       replaceOrHardNavigate(router, "/login?next=%2Fadmin%2Fusers", "/admin/users");
       return;
     }
-    if (!canAccessAdmin(user.role)) {
+    if (!canAccessAdminPanel(user.role)) {
       router.replace("/dashboard");
     }
   }, [ready, status, user, router]);
@@ -48,7 +44,7 @@ export default function AdminUsersPage() {
     );
   }
 
-  if (!canAccessAdmin(user.role)) {
+  if (!canAccessAdminPanel(user.role)) {
     return null;
   }
 

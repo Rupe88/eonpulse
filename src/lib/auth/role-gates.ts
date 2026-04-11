@@ -1,5 +1,9 @@
 /** Global roles from GET /auth/me — used for route and shell gating. */
 
+export function isGlobalSubAdmin(role: string | undefined): boolean {
+  return String(role ?? "").toUpperCase() === "SUB_ADMIN";
+}
+
 export function canAccessClientWorkspace(role: string | undefined): boolean {
   const r = String(role ?? "").toUpperCase();
   return r === "CLIENT_OWNER" || r === "ADMIN" || r === "SUB_ADMIN";
@@ -15,7 +19,7 @@ export function canAccessAuditorWorkspace(role: string | undefined): boolean {
   return r === "AUDITOR" || r === "ADMIN" || r === "SUB_ADMIN";
 }
 
+/** Full workspace Admin UI (create clients, projects, hierarchy) — global Admin only. */
 export function canAccessAdminPanel(role: string | undefined): boolean {
-  const r = String(role ?? "").toUpperCase();
-  return r === "ADMIN" || r === "SUB_ADMIN";
+  return String(role ?? "").toUpperCase() === "ADMIN";
 }

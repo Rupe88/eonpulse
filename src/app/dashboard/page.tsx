@@ -2,7 +2,9 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { SubAdminDashboard } from "@/components/dashboard/sub-admin-dashboard";
 import { WorkerOverview } from "@/components/dashboard/worker-overview";
+import { isGlobalSubAdmin } from "@/lib/auth/role-gates";
 import { AppShellSkeleton } from "@/components/layout/app-shell";
 import { useAuth } from "@/contexts/auth-context";
 
@@ -30,6 +32,10 @@ export default function DashboardPage() {
 
   const role = String(user.role ?? "").toUpperCase();
   if (role === "CLIENT_OWNER" || role === "FINANCE" || role === "AUDITOR") return null;
+
+  if (isGlobalSubAdmin(user.role)) {
+    return <SubAdminDashboard />;
+  }
 
   return <WorkerOverview />;
 }
