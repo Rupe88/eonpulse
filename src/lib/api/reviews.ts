@@ -107,3 +107,59 @@ export function createApproval(
 ) {
   return apiPost("/reviews/approvals", accessToken, body);
 }
+
+export function submitTaskInternalReview(
+  accessToken: string,
+  taskId: string,
+  reviewerId?: string,
+) {
+  return apiPost(
+    `/reviews/tasks/${encodeURIComponent(taskId)}/submit-internal`,
+    accessToken,
+    reviewerId ? { reviewerId } : {},
+  );
+}
+
+export function requestInternalRework(
+  accessToken: string,
+  taskId: string,
+  note: string,
+) {
+  return apiPost(
+    `/reviews/tasks/${encodeURIComponent(taskId)}/internal-rework`,
+    accessToken,
+    { note },
+  );
+}
+
+export function sendTaskToClientReview(accessToken: string, taskId: string) {
+  return apiPost(
+    `/reviews/tasks/${encodeURIComponent(taskId)}/send-to-client`,
+    accessToken,
+    {},
+  );
+}
+
+export function clientCommentOnTask(
+  accessToken: string,
+  taskId: string,
+  body: string,
+) {
+  return apiPost(
+    `/reviews/tasks/${encodeURIComponent(taskId)}/client-comment`,
+    accessToken,
+    { body },
+  );
+}
+
+export function clientApproveTask(
+  accessToken: string,
+  taskId: string,
+  note?: string,
+) {
+  return apiPost(
+    `/reviews/tasks/${encodeURIComponent(taskId)}/client-approve`,
+    accessToken,
+    { ...(note ? { note } : {}) },
+  );
+}

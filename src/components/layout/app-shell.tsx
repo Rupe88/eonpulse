@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { useAuth } from "@/contexts/auth-context";
+import { canAccessAdminPanel } from "@/lib/auth/role-gates";
 import { Skeleton } from "@/components/ui/skeleton";
 
 type NavItem = {
@@ -45,7 +46,7 @@ function navItemActive(pathname: string, href: string): boolean {
     return pathname.startsWith("/dashboard/projects");
   }
   if (href === "/dashboard/tasks") {
-    return pathname.startsWith("/dashboard/tasks");
+    return pathname === "/dashboard/tasks" || pathname.startsWith("/dashboard/tasks/");
   }
   if (href === "/admin/progress") {
     return pathname === "/admin/progress" || pathname.startsWith("/admin/progress/");
@@ -159,9 +160,19 @@ function GitIcon({ className }: { className?: string }) {
   );
 }
 
-function canAccessAdminPanel(globalRole: string | undefined): boolean {
+function isClientRole(globalRole: string | undefined): boolean {
   const r = String(globalRole ?? "").toUpperCase();
-  return r === "ADMIN" || r === "SUB_ADMIN";
+  return r === "CLIENT_OWNER";
+}
+
+function isFinanceRole(globalRole: string | undefined): boolean {
+  const r = String(globalRole ?? "").toUpperCase();
+  return r === "FINANCE";
+}
+
+function isAuditorRole(globalRole: string | undefined): boolean {
+  const r = String(globalRole ?? "").toUpperCase();
+  return r === "AUDITOR";
 }
 
 export function AppShell({
@@ -183,21 +194,35 @@ export function AppShell({
   const { user, signOut } = useAuth();
   const userEmail = user?.email ?? "";
   const showAdmin = canAccessAdminPanel(user?.role);
+  const role = String(user?.role ?? "").toUpperCase();
 
-  const nav: NavItem[] = showAdmin
-    ? [
-        ...baseNav,
-        { href: "/admin", label: "Admin", icon: ShieldIcon },
-        { href: "/admin/users", label: "Users", icon: UsersIcon },
-        { href: "/admin/reviews", label: "Reviews", icon: ReviewIcon },
-        { href: "/admin/deliverables", label: "Deliverables", icon: DeliverableIcon },
-        { href: "/admin/billing", label: "Billing", icon: BillingIcon },
-        { href: "/admin/progress", label: "Progress", icon: ProgressIcon },
-        { href: "/admin/workflow", label: "Workflow", icon: WorkflowIcon },
-        { href: "/admin/git", label: "Git", icon: GitIcon },
-        { href: "/admin/ops", label: "Ops", icon: OpsIcon },
-      ]
-    : baseNav;
+  const nav: NavItem[] = [...baseNav];
+  if (role === "ADMIN" || role === "SUB_ADMIN") {
+    nav.push(
+      { href: "/dashboard/client", label: "Client Workspace", icon: ReviewIcon },
+      { href: "/dashboard/finance", label: "Finance Workspace", icon: BillingIcon },
+      { href: "/dashboard/auditor", label: "Auditor Workspace", icon: ShieldIcon },
+    );
+  } else if (isClientRole(role)) {
+    nav.push({ href: "/dashboard/client", label: "Client Workspace", icon: ReviewIcon });
+  } else if (isFinanceRole(role)) {
+    nav.push({ href: "/dashboard/finance", label: "Finance Workspace", icon: BillingIcon });
+  } else if (isAuditorRole(role)) {
+    nav.push({ href: "/dashboard/auditor", label: "Auditor Workspace", icon: ShieldIcon });
+  }
+  if (showAdmin) {
+    nav.push(
+      { href: "/admin", label: "Admin", icon: ShieldIcon },
+      { href: "/admin/users", label: "Users", icon: UsersIcon },
+      { href: "/admin/reviews", label: "Reviews", icon: ReviewIcon },
+      { href: "/admin/deliverables", label: "Deliverables", icon: DeliverableIcon },
+      { href: "/admin/billing", label: "Billing", icon: BillingIcon },
+      { href: "/admin/progress", label: "Progress", icon: ProgressIcon },
+      { href: "/admin/workflow", label: "Workflow", icon: WorkflowIcon },
+      { href: "/admin/git", label: "Git", icon: GitIcon },
+      { href: "/admin/ops", label: "Ops", icon: OpsIcon },
+    );
+  }
 
   return (
     <div className="flex min-h-full flex-1 bg-[var(--color-canvas)]">

@@ -155,7 +155,7 @@ export function TasksPanel() {
           </section>
         ) : (
           <div className="overflow-x-auto rounded-xl border border-neutral-200 bg-white shadow-sm">
-            <table className="w-full min-w-[880px] text-left text-sm">
+            <table className="w-full min-w-[960px] text-left text-sm">
               <thead className="border-b border-neutral-200 bg-neutral-50 text-xs font-semibold uppercase tracking-wide text-neutral-500">
                 <tr>
                   <th className="px-4 py-3">Task</th>
@@ -164,6 +164,7 @@ export function TasksPanel() {
                   <th className="px-4 py-3">Milestone</th>
                   <th className="px-4 py-3">Section</th>
                   <th className="px-4 py-3">Due</th>
+                  <th className="px-4 py-3 text-right">Open</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100">
@@ -180,6 +181,14 @@ export function TasksPanel() {
                     <td className="px-4 py-3 text-neutral-600">{row.task.milestone.name}</td>
                     <td className="px-4 py-3 text-neutral-600">{row.task.section.name}</td>
                     <td className="px-4 py-3 tabular-nums text-neutral-600">{formatDue(row.task.dueDate)}</td>
+                    <td className="px-4 py-3 text-right">
+                      <Link
+                        href={`/dashboard/tasks/${row.task.id}`}
+                        className="text-sm font-medium text-neutral-900 underline underline-offset-2 hover:text-neutral-700"
+                      >
+                        Work
+                      </Link>
+                    </td>
                   </tr>
                 ))}
               </tbody>

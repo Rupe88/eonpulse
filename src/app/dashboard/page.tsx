@@ -16,9 +16,20 @@ export default function DashboardPage() {
     }
   }, [ready, status, router]);
 
+  useEffect(() => {
+    if (!ready || status !== "authenticated" || !user) return;
+    const role = String(user.role ?? "").toUpperCase();
+    if (role === "CLIENT_OWNER") router.replace("/dashboard/client");
+    if (role === "FINANCE") router.replace("/dashboard/finance");
+    if (role === "AUDITOR") router.replace("/dashboard/auditor");
+  }, [ready, status, user, router]);
+
   if (!ready || status !== "authenticated" || !user) {
     return <AppShellSkeleton headerTitle="Overview" headerSubtitle="Loading dashboard" />;
   }
+
+  const role = String(user.role ?? "").toUpperCase();
+  if (role === "CLIENT_OWNER" || role === "FINANCE" || role === "AUDITOR") return null;
 
   return <WorkerOverview />;
 }

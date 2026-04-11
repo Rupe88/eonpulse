@@ -175,6 +175,59 @@ export async function createMilestone(
   return apiPost("/workspace/milestones", accessToken, body);
 }
 
+export async function getMilestone(accessToken: string, milestoneId: string) {
+  return apiGet<{
+    id: string;
+    name: string;
+    orderNo: number;
+    state: string;
+    billingAmount: string | null;
+    paymentGateMode: string;
+  }>(`/workspace/milestones/${encodeURIComponent(milestoneId)}`, accessToken);
+}
+
+export async function updateMilestone(
+  accessToken: string,
+  milestoneId: string,
+  body: {
+    name?: string;
+    orderNo?: number;
+    billingAmount?: number | null;
+    paymentGateMode?: "HARD_GATE" | "SOFT_GATE" | "NO_GATE";
+  },
+) {
+  return apiPatch(
+    `/workspace/milestones/${encodeURIComponent(milestoneId)}`,
+    accessToken,
+    body,
+  );
+}
+
+export async function archiveMilestone(accessToken: string, milestoneId: string) {
+  return apiPatch(
+    `/workspace/milestones/${encodeURIComponent(milestoneId)}/archive`,
+    accessToken,
+    {},
+  );
+}
+
+export type ProjectMemberOption = {
+  userId: string;
+  role: string;
+  name: string | null;
+  email: string;
+};
+
+export async function listProjectMembers(
+  accessToken: string,
+  projectId: string,
+): Promise<ProjectMemberOption[]> {
+  return apiGet<ProjectMemberOption[]>(
+    `/workspace/projects/${encodeURIComponent(projectId)}/members`,
+    accessToken,
+  );
+}
+
 export async function addProjectMembers(
   accessToken: string,
   projectId: string,

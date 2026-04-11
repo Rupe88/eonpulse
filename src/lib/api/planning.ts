@@ -34,7 +34,23 @@ export type TaskRow = {
   state: string;
   dueDate: string | null;
   clientVisible: boolean;
+  /** Present on top-level tasks from section listing; subtask rows omit this. */
+  subtasks?: TaskRow[];
 };
+
+/** Parents first, then their subtasks — for dropdowns (workflow, git) and lookups by id. */
+export function flattenSectionTasks(tasks: TaskRow[]): TaskRow[] {
+  const out: TaskRow[] = [];
+  for (const t of tasks) {
+    const { subtasks, ...parent } = t;
+    out.push(parent);
+    for (const s of subtasks ?? []) {
+      const { subtasks: _nested, ...child } = s;
+      out.push(child);
+    }
+  }
+  return out;
+}
 
 export async function getProject(projectId: string, accessToken: string) {
   return apiGet<ProjectDetail>(`/planning/projects/${projectId}`, accessToken);

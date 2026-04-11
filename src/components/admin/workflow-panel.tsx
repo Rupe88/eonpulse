@@ -4,7 +4,15 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { ApiError } from "@/lib/api/http";
 import { listMyProjects, type MyProjectRow } from "@/lib/api/workspace";
-import { listMilestones, listSections, listTasksInSection, type MilestoneRow, type SectionRow, type TaskRow } from "@/lib/api/planning";
+import {
+  flattenSectionTasks,
+  listMilestones,
+  listSections,
+  listTasksInSection,
+  type MilestoneRow,
+  type SectionRow,
+  type TaskRow,
+} from "@/lib/api/planning";
 import {
   getMilestoneClosable,
   transitionMilestoneState,
@@ -114,7 +122,8 @@ export function WorkflowPanel() {
       try {
         const rows = await listTasksInSection(sectionId, token);
         setTasks(rows);
-        setTaskId((prev) => (prev && rows.some((t) => t.id === prev) ? prev : rows[0]?.id ?? ""));
+        const flat = flattenSectionTasks(rows);
+        setTaskId((prev) => (prev && flat.some((t) => t.id === prev) ? prev : flat[0]?.id ?? ""));
       } catch (e) {
         setError(em(e));
       }
@@ -123,7 +132,8 @@ export function WorkflowPanel() {
 
   const selectedProject = useMemo(() => projects.find((p) => p.projectId === projectId), [projects, projectId]);
   const selectedMilestone = useMemo(() => milestones.find((m) => m.id === milestoneId), [milestones, milestoneId]);
-  const selectedTask = useMemo(() => tasks.find((t) => t.id === taskId), [tasks, taskId]);
+  const flatTasks = useMemo(() => flattenSectionTasks(tasks), [tasks]);
+  const selectedTask = useMemo(() => flatTasks.find((t) => t.id === taskId), [flatTasks, taskId]);
 
   async function applyProjectTransition() {
     if (!token || !projectId) return;
@@ -168,6 +178,8 @@ export function WorkflowPanel() {
       if (sectionId) {
         const rows = await listTasksInSection(sectionId, token);
         setTasks(rows);
+        const flat = flattenSectionTasks(rows);
+        setTaskId((prev) => (prev && flat.some((t) => t.id === prev) ? prev : flat[0]?.id ?? ""));
       }
     } catch (e) {
       setError(em(e));
@@ -224,9 +236,9 @@ export function WorkflowPanel() {
               </option>
             ))}
           </select>
-          <select value={taskId} onChange={(e) => setTaskId(e.target.value)} className="rounded-md border border-neutral-300 px-3 py-2 text-sm" disabled={tasks.length === 0}>
-            <option value="">{tasks.length ? "Select task" : "No tasks"}</option>
-            {tasks.map((t) => (
+          <select value={taskId} onChange={(e) => setTaskId(e.target.value)} className="rounded-md border border-neutral-300 px-3 py-2 text-sm" disabled={flatTasks.length === 0}>
+            <option value="">{flatTasks.length ? "Select task" : "No tasks"}</option>
+            {flatTasks.map((t) => (
               <option key={t.id} value={t.id}>
                 {t.title} ({t.state})
               </option>

@@ -226,7 +226,10 @@ export function WorkerOverview() {
                     <section className="grid gap-4 lg:grid-cols-2">
                       <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
                         <h3 className="text-sm font-semibold text-neutral-900">Task Status Distribution</h3>
-                        <p className="mt-1 text-xs text-neutral-500">Current project workload by state</p>
+                        <p className="mt-1 text-xs text-neutral-500">
+                          Whole project (all tasks). When someone is assigned as executor, the task moves to{" "}
+                          <strong>Assigned</strong> so it appears here — not only in My tasks below.
+                        </p>
                         <div className="mt-4 space-y-2">
                           {overview.statusBreakdown.map((row) => (
                             <div key={row.state}>
@@ -317,6 +320,10 @@ export function WorkerOverview() {
 
                 <section>
                   <h3 className="mb-3 text-sm font-semibold text-neutral-900">My tasks</h3>
+                  <p className="mb-3 text-xs text-neutral-500">
+                    Tasks where you are the <strong>assignee</strong> (not internal reviewer). If you were added at
+                    task creation or via Admin assign, they should list here.
+                  </p>
                   <AssignmentsTable rows={assignments} empty="No tasks assigned to you in this project." />
                 </section>
 
@@ -389,7 +396,7 @@ function AssignmentsTable({
   }
   return (
     <div className="overflow-x-auto rounded-xl border border-neutral-200 bg-white shadow-sm">
-      <table className="w-full min-w-[640px] text-left text-sm">
+      <table className="w-full min-w-[720px] text-left text-sm">
         <thead className="border-b border-neutral-200 bg-neutral-50 text-xs font-semibold uppercase tracking-wide text-neutral-500">
           <tr>
             <th className="px-4 py-3">Task</th>
@@ -397,6 +404,7 @@ function AssignmentsTable({
             <th className="px-4 py-3">Milestone</th>
             <th className="px-4 py-3">Section</th>
             <th className="px-4 py-3">Due</th>
+            <th className="px-4 py-3 text-right">Open</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-neutral-100">
@@ -407,6 +415,14 @@ function AssignmentsTable({
               <td className="px-4 py-3 text-neutral-600">{row.task.milestone.name}</td>
               <td className="px-4 py-3 text-neutral-600">{row.task.section.name}</td>
               <td className="px-4 py-3 tabular-nums text-neutral-600">{formatDue(row.task.dueDate)}</td>
+              <td className="px-4 py-3 text-right">
+                <Link
+                  href={`/dashboard/tasks/${row.task.id}`}
+                  className="text-sm font-medium text-neutral-900 underline underline-offset-2 hover:text-neutral-700"
+                >
+                  Work
+                </Link>
+              </td>
             </tr>
           ))}
         </tbody>

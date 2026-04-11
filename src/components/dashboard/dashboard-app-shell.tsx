@@ -14,6 +14,9 @@ export function DashboardAppShell({ children }: { children: React.ReactNode }) {
     if (pathname.startsWith("/dashboard/projects")) {
       return { title: "Projects", subtitle: "Workspaces and projects you belong to" };
     }
+    if (pathname.startsWith("/dashboard/tasks/") && pathname !== "/dashboard/tasks") {
+      return { title: "Task detail", subtitle: "Status, evidence, dependencies, and activity" };
+    }
     if (pathname.startsWith("/dashboard/tasks")) {
       return { title: "Tasks", subtitle: "Assignments across your projects" };
     }

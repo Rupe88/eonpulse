@@ -1,36 +1,32 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Eonpulse — frontend
 
-## Getting Started
+Next.js (App Router) client for the Eonpulse API.
 
-First, run the development server:
+## Documentation
+
+- **[../docs/PRODUCT_AND_WIRING.md](../docs/PRODUCT_AND_WIRING.md)** — routes, role-based dashboards, and how `NEXT_PUBLIC_API_URL` / `/api/backend` proxy connect to Nest
+
+## Local development
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Default: [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Point the UI at the API:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **Direct:** `NEXT_PUBLIC_API_URL=http://127.0.0.1:4000` in `.env.local`
+- **Proxy (default):** leave `NEXT_PUBLIC_API_URL` unset or use `/api/backend`; run the Nest server on port 4000 so `frontend`’s `app/api/backend/[...path]` can forward requests
 
-## Learn More
+## Key paths in this app
 
-To learn more about Next.js, take a look at the following resources:
+| Area | Path pattern |
+|------|----------------|
+| Auth | `/login`, `/register` |
+| Delivery | `/dashboard`, `/dashboard/tasks`, `/dashboard/tasks/[taskId]` |
+| Role dashboards | `/dashboard/client`, `/dashboard/finance`, `/dashboard/auditor` |
+| Admin | `/admin`, `/admin/reviews`, … |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Role checks use `GET /auth/me` → `user.role` (global role). See `src/lib/auth/role-gates.ts`.

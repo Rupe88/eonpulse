@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { ApiError } from "@/lib/api/http";
 import {
   archiveClient,
+  archiveMilestone,
   archiveProject,
   createClient,
   createMilestone,
@@ -13,6 +14,7 @@ import {
   listMyWorkspaces,
   listProjectsInWorkspace,
   addProjectMembers,
+  updateMilestone,
   updateClient,
   updateProject,
 } from "@/lib/api/workspace";
@@ -23,7 +25,15 @@ import {
   listTasksInSection,
 } from "@/lib/api/planning";
 import type { MilestoneRow, SectionRow, TaskRow } from "@/lib/api/planning";
-import { assignTask, createSection, createTask } from "@/lib/api/tasks-admin";
+import {
+  archiveSection,
+  archiveTask,
+  assignTask,
+  createSection,
+  createTask,
+  updateSection,
+  updateTask,
+} from "@/lib/api/tasks-admin";
 import { listAdminUsers } from "@/lib/api/users";
 import type { AdminUserRow } from "@/lib/api/users";
 import { Spinner } from "@/components/ui/spinner";
@@ -128,6 +138,21 @@ export function AdminPanel() {
   const [sectionId, setSectionId] = useState("");
 
   const [tasks, setTasks] = useState<TaskRow[]>([]);
+  const [milestoneActionPending, setMilestoneActionPending] = useState<string | null>(null);
+  const [milestoneEditId, setMilestoneEditId] = useState<string | null>(null);
+  const [milestoneEditName, setMilestoneEditName] = useState("");
+  const [milestoneEditOrderNo, setMilestoneEditOrderNo] = useState("1");
+  const [milestoneEditBillingAmount, setMilestoneEditBillingAmount] = useState("");
+  const [milestoneEditGate, setMilestoneEditGate] = useState<(typeof PAYMENT_GATES)[number]>("HARD_GATE");
+  const [sectionActionPending, setSectionActionPending] = useState<string | null>(null);
+  const [sectionEditId, setSectionEditId] = useState<string | null>(null);
+  const [sectionEditName, setSectionEditName] = useState("");
+  const [sectionEditOrderNo, setSectionEditOrderNo] = useState("1");
+  const [taskActionPending, setTaskActionPending] = useState<string | null>(null);
+  const [taskEditId, setTaskEditId] = useState<string | null>(null);
+  const [taskEditTitle, setTaskEditTitle] = useState("");
+  const [taskEditDueDate, setTaskEditDueDate] = useState("");
+  const [taskEditClientVisible, setTaskEditClientVisible] = useState(false);
 
   const [memberSearchInput, setMemberSearchInput] = useState("");
   const [memberSearchDebounced, setMemberSearchDebounced] = useState("");
@@ -1060,6 +1085,152 @@ export function AdminPanel() {
             ))}
           </select>
         </Field>
+
+        {milestones.length > 0 ? (
+          <div className="rounded-lg border border-neutral-100 bg-neutral-50 p-3">
+            <p className="text-xs font-medium text-neutral-600">Manage milestones</p>
+            <div className="mt-2 overflow-x-auto">
+              <table className="w-full min-w-[760px] text-left text-sm">
+                <thead className="text-xs uppercase tracking-wide text-neutral-500">
+                  <tr>
+                    <th className="px-2 py-2 font-semibold">Name</th>
+                    <th className="px-2 py-2 font-semibold">Order</th>
+                    <th className="px-2 py-2 font-semibold">Billing</th>
+                    <th className="px-2 py-2 font-semibold">Gate</th>
+                    <th className="px-2 py-2 text-right font-semibold">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-200">
+                  {milestones.map((m) => {
+                    const editing = milestoneEditId === m.id;
+                    const rowBusy =
+                      milestoneActionPending === `save:${m.id}` ||
+                      milestoneActionPending === `archive:${m.id}`;
+                    return (
+                      <tr key={m.id}>
+                        <td className="px-2 py-2">
+                          {editing ? (
+                            <input value={milestoneEditName} onChange={(e) => setMilestoneEditName(e.target.value)} className="w-full rounded-md border border-neutral-300 px-2 py-1.5 text-sm" />
+                          ) : (
+                            <span className="font-medium text-neutral-900">{m.name}</span>
+                          )}
+                        </td>
+                        <td className="px-2 py-2">
+                          {editing ? (
+                            <input type="number" min={1} value={milestoneEditOrderNo} onChange={(e) => setMilestoneEditOrderNo(e.target.value)} className="w-24 rounded-md border border-neutral-300 px-2 py-1.5 text-sm" />
+                          ) : (
+                            <span className="text-neutral-700">{m.orderNo}</span>
+                          )}
+                        </td>
+                        <td className="px-2 py-2">
+                          {editing ? (
+                            <input type="number" step="0.01" min={0} value={milestoneEditBillingAmount} onChange={(e) => setMilestoneEditBillingAmount(e.target.value)} className="w-32 rounded-md border border-neutral-300 px-2 py-1.5 text-sm" />
+                          ) : (
+                            <span className="text-neutral-700">{m.billingAmount ?? "—"}</span>
+                          )}
+                        </td>
+                        <td className="px-2 py-2">
+                          {editing ? (
+                            <select value={milestoneEditGate} onChange={(e) => setMilestoneEditGate(e.target.value as (typeof PAYMENT_GATES)[number])} className="rounded-md border border-neutral-300 px-2 py-1.5 text-sm">
+                              {PAYMENT_GATES.map((g) => (
+                                <option key={g} value={g}>{g}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <span className="text-neutral-700">{m.paymentGateMode}</span>
+                          )}
+                        </td>
+                        <td className="px-2 py-2 text-right">
+                          <div className="inline-flex gap-2">
+                            {editing ? (
+                              <>
+                                <button
+                                  type="button"
+                                  disabled={rowBusy}
+                                  onClick={async () => {
+                                    try {
+                                      setMilestoneActionPending(`save:${m.id}`);
+                                      setError(null);
+                                      setBanner(null);
+                                      await updateMilestone(token, m.id, {
+                                        name: milestoneEditName.trim(),
+                                        orderNo: Number(milestoneEditOrderNo),
+                                        billingAmount:
+                                          milestoneEditBillingAmount.trim() === ""
+                                            ? null
+                                            : Number(milestoneEditBillingAmount),
+                                        paymentGateMode: milestoneEditGate,
+                                      });
+                                      setMilestoneEditId(null);
+                                      const refreshed = await listMilestones(projectId, token);
+                                      setMilestones(refreshed);
+                                      setBanner("Milestone updated.");
+                                    } catch (e) {
+                                      setError(errMessage(e));
+                                    } finally {
+                                      setMilestoneActionPending(null);
+                                    }
+                                  }}
+                                  className="rounded-md border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-xs font-semibold text-white"
+                                >
+                                  {milestoneActionPending === `save:${m.id}` ? "Saving..." : "Save"}
+                                </button>
+                                <button type="button" disabled={rowBusy} onClick={() => setMilestoneEditId(null)} className="rounded-md border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-700">
+                                  Cancel
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <button
+                                  type="button"
+                                  disabled={!!milestoneActionPending}
+                                  onClick={() => {
+                                    setMilestoneEditId(m.id);
+                                    setMilestoneEditName(m.name);
+                                    setMilestoneEditOrderNo(String(m.orderNo));
+                                    setMilestoneEditBillingAmount(m.billingAmount ?? "");
+                                    setMilestoneEditGate((m.paymentGateMode as (typeof PAYMENT_GATES)[number]) ?? "HARD_GATE");
+                                  }}
+                                  className="rounded-md border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-700"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={!!milestoneActionPending}
+                                  onClick={async () => {
+                                    if (!window.confirm(`Archive milestone "${m.name}"?`)) return;
+                                    try {
+                                      setMilestoneActionPending(`archive:${m.id}`);
+                                      setError(null);
+                                      setBanner(null);
+                                      await archiveMilestone(token, m.id);
+                                      const refreshed = await listMilestones(projectId, token);
+                                      setMilestones(refreshed);
+                                      setMilestoneId((prev) => (prev === m.id ? "" : prev));
+                                      setBanner("Milestone archived.");
+                                    } catch (e) {
+                                      setError(errMessage(e));
+                                    } finally {
+                                      setMilestoneActionPending(null);
+                                    }
+                                  }}
+                                  className="rounded-md border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700"
+                                >
+                                  {milestoneActionPending === `archive:${m.id}` ? "Archiving..." : "Archive"}
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : null}
       </Card>
 
       <Card title="5. Section">
@@ -1141,6 +1312,110 @@ export function AdminPanel() {
             ))}
           </select>
         </Field>
+
+        {sections.length > 0 ? (
+          <div className="rounded-lg border border-neutral-100 bg-neutral-50 p-3">
+            <p className="text-xs font-medium text-neutral-600">Manage sections</p>
+            <ul className="mt-2 space-y-2">
+              {sections.map((s) => {
+                const editing = sectionEditId === s.id;
+                const rowBusy =
+                  sectionActionPending === `save:${s.id}` ||
+                  sectionActionPending === `archive:${s.id}`;
+                return (
+                  <li key={s.id} className="rounded-md border border-neutral-200 bg-white px-3 py-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {editing ? (
+                        <>
+                          <input value={sectionEditName} onChange={(e) => setSectionEditName(e.target.value)} className="rounded-md border border-neutral-300 px-2 py-1 text-sm" />
+                          <input type="number" min={1} value={sectionEditOrderNo} onChange={(e) => setSectionEditOrderNo(e.target.value)} className="w-24 rounded-md border border-neutral-300 px-2 py-1 text-sm" />
+                        </>
+                      ) : (
+                        <span className="text-sm font-medium text-neutral-900">
+                          {s.orderNo}. {s.name}
+                        </span>
+                      )}
+                      <div className="ml-auto flex gap-2">
+                        {editing ? (
+                          <>
+                            <button
+                              type="button"
+                              disabled={rowBusy}
+                              onClick={async () => {
+                                try {
+                                  setSectionActionPending(`save:${s.id}`);
+                                  setError(null);
+                                  setBanner(null);
+                                  await updateSection(token, s.id, {
+                                    name: sectionEditName.trim(),
+                                    orderNo: Number(sectionEditOrderNo),
+                                  });
+                                  setSectionEditId(null);
+                                  const refreshed = await listSections(milestoneId, token);
+                                  setSections(refreshed);
+                                  setBanner("Section updated.");
+                                } catch (e) {
+                                  setError(errMessage(e));
+                                } finally {
+                                  setSectionActionPending(null);
+                                }
+                              }}
+                              className="rounded-md border border-neutral-800 bg-neutral-900 px-2.5 py-1 text-xs font-semibold text-white"
+                            >
+                              {sectionActionPending === `save:${s.id}` ? "Saving..." : "Save"}
+                            </button>
+                            <button type="button" disabled={rowBusy} onClick={() => setSectionEditId(null)} className="rounded-md border border-neutral-200 bg-white px-2.5 py-1 text-xs font-semibold text-neutral-700">
+                              Cancel
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              disabled={!!sectionActionPending}
+                              onClick={() => {
+                                setSectionEditId(s.id);
+                                setSectionEditName(s.name);
+                                setSectionEditOrderNo(String(s.orderNo));
+                              }}
+                              className="rounded-md border border-neutral-200 bg-white px-2.5 py-1 text-xs font-semibold text-neutral-700"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              disabled={!!sectionActionPending}
+                              onClick={async () => {
+                                if (!window.confirm(`Archive section "${s.name}"?`)) return;
+                                try {
+                                  setSectionActionPending(`archive:${s.id}`);
+                                  setError(null);
+                                  setBanner(null);
+                                  await archiveSection(token, s.id);
+                                  const refreshed = await listSections(milestoneId, token);
+                                  setSections(refreshed);
+                                  setSectionId((prev) => (prev === s.id ? "" : prev));
+                                  setBanner("Section archived.");
+                                } catch (e) {
+                                  setError(errMessage(e));
+                                } finally {
+                                  setSectionActionPending(null);
+                                }
+                              }}
+                              className="rounded-md border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700"
+                            >
+                              {sectionActionPending === `archive:${s.id}` ? "Archiving..." : "Archive"}
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ) : null}
       </Card>
 
       <Card title="6. Task">
@@ -1159,6 +1434,7 @@ export function AdminPanel() {
             const clientVisible = fd.get("taskClientVisible") === "on";
             if (!title) return;
             const assigneeId = String(fd.get("taskAssigneeId") ?? "").trim();
+            const parentTaskId = String(fd.get("taskParentId") ?? "").trim();
             try {
               setPending("task");
               setError(null);
@@ -1168,6 +1444,7 @@ export function AdminPanel() {
                 title,
                 ...(due ? { dueDate: new Date(due).toISOString() } : {}),
                 clientVisible,
+                ...(parentTaskId ? { parentTaskId } : {}),
               });
               if (assigneeId) {
                 await assignTask(token, created.id, { userId: assigneeId });
@@ -1176,16 +1453,8 @@ export function AdminPanel() {
                 setBanner("Task created. Assign it below or the worker won’t see it in their task list.");
               }
               form.reset();
-              setTasks((prev) => [
-                {
-                  id: created.id,
-                  title,
-                  state: "BACKLOG",
-                  dueDate: due ? new Date(due).toISOString() : null,
-                  clientVisible,
-                },
-                ...prev,
-              ]);
+              const refreshed = await listTasksInSection(sectionId, token);
+              setTasks(refreshed);
             } catch (e) {
               setError(errMessage(e));
             } finally {
@@ -1231,6 +1500,26 @@ export function AdminPanel() {
             </label>
           </div>
           <div className="sm:col-span-2">
+            <label className="block space-y-1.5">
+              <span className="text-xs font-medium text-neutral-600">Subtask of (optional)</span>
+              <select
+                name="taskParentId"
+                defaultValue=""
+                className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
+              >
+                <option value="">— Top-level task (shown in section list) —</option>
+                {tasks.map((pt) => (
+                  <option key={pt.id} value={pt.id}>
+                    {pt.title}
+                  </option>
+                ))}
+              </select>
+              <span className="text-xs text-neutral-500">
+                Subtasks are hidden from the top-level list but appear on the parent task for assignees.
+              </span>
+            </label>
+          </div>
+          <div className="sm:col-span-2">
             <button
               type="submit"
               disabled={busy || !sectionId}
@@ -1245,11 +1534,195 @@ export function AdminPanel() {
         {tasks.length > 0 && (
           <div className="rounded-lg border border-neutral-100 bg-neutral-50 p-3">
             <p className="text-xs font-medium text-neutral-600">Tasks in this section</p>
-            <ul className="mt-2 space-y-1 text-sm text-neutral-800">
+            <p className="mt-1 text-xs text-neutral-500">
+              Top-level tasks are listed here; subtasks nest under their parent and still appear on the worker task screen.
+            </p>
+            <ul className="mt-2 space-y-2 text-sm text-neutral-800">
               {tasks.map((t) => (
-                <li key={t.id}>
-                  {t.title}{" "}
-                  <span className="text-neutral-500">({t.state})</span>
+                <li key={t.id} className="rounded-md border border-neutral-200 bg-white px-3 py-2">
+                  {taskEditId === t.id ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <input value={taskEditTitle} onChange={(e) => setTaskEditTitle(e.target.value)} className="min-w-[220px] rounded-md border border-neutral-300 px-2 py-1 text-sm" />
+                      <input type="datetime-local" value={taskEditDueDate} onChange={(e) => setTaskEditDueDate(e.target.value)} className="rounded-md border border-neutral-300 px-2 py-1 text-sm" />
+                      <label className="inline-flex items-center gap-1 text-xs text-neutral-700">
+                        <input type="checkbox" checked={taskEditClientVisible} onChange={(e) => setTaskEditClientVisible(e.target.checked)} />
+                        Client visible
+                      </label>
+                      <div className="ml-auto flex gap-2">
+                        <button
+                          type="button"
+                          disabled={taskActionPending === `save:${t.id}`}
+                          onClick={async () => {
+                            try {
+                              setTaskActionPending(`save:${t.id}`);
+                              setError(null);
+                              setBanner(null);
+                              await updateTask(token, t.id, {
+                                title: taskEditTitle.trim(),
+                                dueDate: taskEditDueDate ? new Date(taskEditDueDate).toISOString() : null,
+                                clientVisible: taskEditClientVisible,
+                              });
+                              const refreshed = await listTasksInSection(sectionId, token);
+                              setTasks(refreshed);
+                              setTaskEditId(null);
+                              setBanner("Task updated.");
+                            } catch (e) {
+                              setError(errMessage(e));
+                            } finally {
+                              setTaskActionPending(null);
+                            }
+                          }}
+                          className="rounded-md border border-neutral-800 bg-neutral-900 px-2.5 py-1 text-xs font-semibold text-white"
+                        >
+                          {taskActionPending === `save:${t.id}` ? "Saving..." : "Save"}
+                        </button>
+                        <button type="button" onClick={() => setTaskEditId(null)} className="rounded-md border border-neutral-200 bg-white px-2.5 py-1 text-xs font-semibold text-neutral-700">
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span>
+                        {t.title} <span className="text-neutral-500">({t.state})</span>
+                      </span>
+                      <span className="text-xs text-neutral-500">{t.dueDate ? new Date(t.dueDate).toLocaleString() : "No due date"}</span>
+                      <div className="ml-auto flex gap-2">
+                        <button
+                          type="button"
+                          disabled={!!taskActionPending}
+                          onClick={() => {
+                            setTaskEditId(t.id);
+                            setTaskEditTitle(t.title);
+                            setTaskEditDueDate(t.dueDate ? new Date(t.dueDate).toISOString().slice(0, 16) : "");
+                            setTaskEditClientVisible(t.clientVisible);
+                          }}
+                          className="rounded-md border border-neutral-200 bg-white px-2.5 py-1 text-xs font-semibold text-neutral-700"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          disabled={!!taskActionPending}
+                          onClick={async () => {
+                            if (!window.confirm(`Archive task "${t.title}"?`)) return;
+                            try {
+                              setTaskActionPending(`archive:${t.id}`);
+                              setError(null);
+                              setBanner(null);
+                              await archiveTask(token, t.id);
+                              const refreshed = await listTasksInSection(sectionId, token);
+                              setTasks(refreshed);
+                              setBanner("Task archived.");
+                            } catch (e) {
+                              setError(errMessage(e));
+                            } finally {
+                              setTaskActionPending(null);
+                            }
+                          }}
+                          className="rounded-md border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700"
+                        >
+                          {taskActionPending === `archive:${t.id}` ? "Archiving..." : "Archive"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {t.subtasks && t.subtasks.length > 0 ? (
+                    <ul className="mt-3 space-y-2 border-l-2 border-neutral-200 pl-3">
+                      {t.subtasks.map((st) => (
+                        <li key={st.id} className="rounded-md border border-neutral-200 bg-neutral-50/90 px-3 py-2">
+                          {taskEditId === st.id ? (
+                            <div className="flex flex-wrap items-center gap-2">
+                              <input value={taskEditTitle} onChange={(e) => setTaskEditTitle(e.target.value)} className="min-w-[220px] rounded-md border border-neutral-300 px-2 py-1 text-sm" />
+                              <input type="datetime-local" value={taskEditDueDate} onChange={(e) => setTaskEditDueDate(e.target.value)} className="rounded-md border border-neutral-300 px-2 py-1 text-sm" />
+                              <label className="inline-flex items-center gap-1 text-xs text-neutral-700">
+                                <input type="checkbox" checked={taskEditClientVisible} onChange={(e) => setTaskEditClientVisible(e.target.checked)} />
+                                Client visible
+                              </label>
+                              <div className="ml-auto flex gap-2">
+                                <button
+                                  type="button"
+                                  disabled={taskActionPending === `save:${st.id}`}
+                                  onClick={async () => {
+                                    try {
+                                      setTaskActionPending(`save:${st.id}`);
+                                      setError(null);
+                                      setBanner(null);
+                                      await updateTask(token, st.id, {
+                                        title: taskEditTitle.trim(),
+                                        dueDate: taskEditDueDate ? new Date(taskEditDueDate).toISOString() : null,
+                                        clientVisible: taskEditClientVisible,
+                                      });
+                                      const refreshed = await listTasksInSection(sectionId, token);
+                                      setTasks(refreshed);
+                                      setTaskEditId(null);
+                                      setBanner("Task updated.");
+                                    } catch (e) {
+                                      setError(errMessage(e));
+                                    } finally {
+                                      setTaskActionPending(null);
+                                    }
+                                  }}
+                                  className="rounded-md border border-neutral-800 bg-neutral-900 px-2.5 py-1 text-xs font-semibold text-white"
+                                >
+                                  {taskActionPending === `save:${st.id}` ? "Saving..." : "Save"}
+                                </button>
+                                <button type="button" onClick={() => setTaskEditId(null)} className="rounded-md border border-neutral-200 bg-white px-2.5 py-1 text-xs font-semibold text-neutral-700">
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Subtask</span>
+                              <span>
+                                {st.title} <span className="text-neutral-500">({st.state})</span>
+                              </span>
+                              <span className="text-xs text-neutral-500">{st.dueDate ? new Date(st.dueDate).toLocaleString() : "No due date"}</span>
+                              <div className="ml-auto flex gap-2">
+                                <button
+                                  type="button"
+                                  disabled={!!taskActionPending}
+                                  onClick={() => {
+                                    setTaskEditId(st.id);
+                                    setTaskEditTitle(st.title);
+                                    setTaskEditDueDate(st.dueDate ? new Date(st.dueDate).toISOString().slice(0, 16) : "");
+                                    setTaskEditClientVisible(st.clientVisible);
+                                  }}
+                                  className="rounded-md border border-neutral-200 bg-white px-2.5 py-1 text-xs font-semibold text-neutral-700"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={!!taskActionPending}
+                                  onClick={async () => {
+                                    if (!window.confirm(`Archive subtask "${st.title}"?`)) return;
+                                    try {
+                                      setTaskActionPending(`archive:${st.id}`);
+                                      setError(null);
+                                      setBanner(null);
+                                      await archiveTask(token, st.id);
+                                      const refreshed = await listTasksInSection(sectionId, token);
+                                      setTasks(refreshed);
+                                      setBanner("Task archived.");
+                                    } catch (e) {
+                                      setError(errMessage(e));
+                                    } finally {
+                                      setTaskActionPending(null);
+                                    }
+                                  }}
+                                  className="rounded-md border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700"
+                                >
+                                  {taskActionPending === `archive:${st.id}` ? "Archiving..." : "Archive"}
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
                 </li>
               ))}
             </ul>

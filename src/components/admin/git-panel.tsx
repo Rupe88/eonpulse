@@ -4,7 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { ApiError } from "@/lib/api/http";
 import { listMyProjects, type MyProjectRow } from "@/lib/api/workspace";
-import { listMilestones, listSections, listTasksInSection, type TaskRow } from "@/lib/api/planning";
+import {
+  flattenSectionTasks,
+  listMilestones,
+  listSections,
+  listTasksInSection,
+  type TaskRow,
+} from "@/lib/api/planning";
 import { createGitLink, listGitLinks, type GitLinkRow } from "@/lib/api/git-admin";
 
 function em(e: unknown): string {
@@ -73,7 +79,7 @@ export function GitPanel() {
         const sectionLists = await Promise.all(milestones.map((m) => listSections(m.id, token)));
         const flatSections = sectionLists.flat();
         const taskLists = await Promise.all(flatSections.map((s) => listTasksInSection(s.id, token)));
-        const flatTasks = taskLists.flat();
+        const flatTasks = taskLists.flatMap((list) => flattenSectionTasks(list));
         setTasks(flatTasks);
         setTaskId((prev) => (prev && flatTasks.some((t) => t.id === prev) ? prev : ""));
       } catch {

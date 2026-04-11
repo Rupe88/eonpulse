@@ -58,6 +58,15 @@ body {
   @apply border-neutral-400 ring-2 ring-neutral-900/10;
 }
 
+select.input-field {
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%23737373' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.65rem center;
+  background-size: 1.15rem;
+  padding-right: 2.5rem;
+}
+
 .card-elevated {
   @apply rounded-xl border border-neutral-200 bg-white shadow-sm shadow-neutral-900/5;
 }
