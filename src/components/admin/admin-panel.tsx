@@ -153,6 +153,8 @@ export function AdminPanel() {
   const [taskEditTitle, setTaskEditTitle] = useState("");
   const [taskEditDueDate, setTaskEditDueDate] = useState("");
   const [taskEditClientVisible, setTaskEditClientVisible] = useState(false);
+  /** Per-task selected user for Assign on existing tasks (section 6). */
+  const [taskAssignPick, setTaskAssignPick] = useState<Record<string, string>>({});
 
   const [memberSearchInput, setMemberSearchInput] = useState("");
   const [memberSearchDebounced, setMemberSearchDebounced] = useState("");
@@ -182,6 +184,28 @@ export function AdminPanel() {
   const [workspaceSlugEdited, setWorkspaceSlugEdited] = useState(false);
 
   const busy = pending !== null;
+
+  const assignExistingTask = useCallback(
+    async (taskId: string, userId: string | undefined) => {
+      const uid = userId?.trim();
+      if (!token || !sectionId || !uid) return;
+      setTaskActionPending(`assign:${taskId}`);
+      setError(null);
+      setBanner(null);
+      try {
+        await assignTask(token, taskId, { userId: uid });
+        setBanner("Task assigned — worker will see it under Dashboard → Tasks for this project.");
+        const refreshed = await listTasksInSection(sectionId, token);
+        setTasks(refreshed);
+        setTaskAssignPick((prev) => ({ ...prev, [taskId]: "" }));
+      } catch (e) {
+        setError(errMessage(e));
+      } finally {
+        setTaskActionPending(null);
+      }
+    },
+    [token, sectionId],
+  );
 
   const refreshClients = useCallback(async () => {
     if (!token || !workspaceId) return;
@@ -1535,7 +1559,8 @@ export function AdminPanel() {
           <div className="rounded-lg border border-neutral-100 bg-neutral-50 p-3">
             <p className="text-xs font-medium text-neutral-600">Tasks in this section</p>
             <p className="mt-1 text-xs text-neutral-500">
-              Top-level tasks are listed here; subtasks nest under their parent and still appear on the worker task screen.
+              Top-level tasks are listed here; subtasks nest under their parent. Use <strong>Assign worker</strong> on each
+              row if the task was created without an assignee — otherwise workers will not see it under Dashboard → Tasks.
             </p>
             <ul className="mt-2 space-y-2 text-sm text-neutral-800">
               {tasks.map((t) => (
@@ -1582,50 +1607,80 @@ export function AdminPanel() {
                       </div>
                     </div>
                   ) : (
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span>
-                        {t.title} <span className="text-neutral-500">({t.state})</span>
-                      </span>
-                      <span className="text-xs text-neutral-500">{t.dueDate ? new Date(t.dueDate).toLocaleString() : "No due date"}</span>
-                      <div className="ml-auto flex gap-2">
+                    <>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span>
+                          {t.title} <span className="text-neutral-500">({t.state})</span>
+                        </span>
+                        <span className="text-xs text-neutral-500">{t.dueDate ? new Date(t.dueDate).toLocaleString() : "No due date"}</span>
+                        <div className="ml-auto flex gap-2">
+                          <button
+                            type="button"
+                            disabled={!!taskActionPending}
+                            onClick={() => {
+                              setTaskEditId(t.id);
+                              setTaskEditTitle(t.title);
+                              setTaskEditDueDate(t.dueDate ? new Date(t.dueDate).toISOString().slice(0, 16) : "");
+                              setTaskEditClientVisible(t.clientVisible);
+                            }}
+                            className="rounded-md border border-neutral-200 bg-white px-2.5 py-1 text-xs font-semibold text-neutral-700"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            disabled={!!taskActionPending}
+                            onClick={async () => {
+                              if (!window.confirm(`Archive task "${t.title}"?`)) return;
+                              try {
+                                setTaskActionPending(`archive:${t.id}`);
+                                setError(null);
+                                setBanner(null);
+                                await archiveTask(token, t.id);
+                                const refreshed = await listTasksInSection(sectionId, token);
+                                setTasks(refreshed);
+                                setBanner("Task archived.");
+                              } catch (e) {
+                                setError(errMessage(e));
+                              } finally {
+                                setTaskActionPending(null);
+                              }
+                            }}
+                            className="rounded-md border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700"
+                          >
+                            {taskActionPending === `archive:${t.id}` ? "Archiving..." : "Archive"}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-neutral-100 pt-3">
+                        <span className="text-xs font-medium text-neutral-600">Assign worker</span>
+                        <select
+                          className="min-w-[180px] max-w-[240px] rounded-md border border-neutral-300 px-2 py-1 text-xs"
+                          value={taskAssignPick[t.id] ?? ""}
+                          onChange={(e) =>
+                            setTaskAssignPick((prev) => ({ ...prev, [t.id]: e.target.value }))
+                          }
+                          disabled={!!taskActionPending || adminUsersLoading}
+                        >
+                          <option value="">{adminUsersLoading ? "Loading users…" : "Select user…"}</option>
+                          {adminUsers.map((u) => (
+                            <option key={u.id} value={u.id}>
+                              {userOptionLabel(u)}
+                            </option>
+                          ))}
+                        </select>
                         <button
                           type="button"
-                          disabled={!!taskActionPending}
-                          onClick={() => {
-                            setTaskEditId(t.id);
-                            setTaskEditTitle(t.title);
-                            setTaskEditDueDate(t.dueDate ? new Date(t.dueDate).toISOString().slice(0, 16) : "");
-                            setTaskEditClientVisible(t.clientVisible);
-                          }}
-                          className="rounded-md border border-neutral-200 bg-white px-2.5 py-1 text-xs font-semibold text-neutral-700"
+                          disabled={
+                            !(taskAssignPick[t.id] ?? "").trim() || !!taskActionPending || !token
+                          }
+                          onClick={() => void assignExistingTask(t.id, taskAssignPick[t.id])}
+                          className="rounded-md border border-neutral-800 bg-neutral-900 px-2.5 py-1 text-xs font-semibold text-white disabled:opacity-40"
                         >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          disabled={!!taskActionPending}
-                          onClick={async () => {
-                            if (!window.confirm(`Archive task "${t.title}"?`)) return;
-                            try {
-                              setTaskActionPending(`archive:${t.id}`);
-                              setError(null);
-                              setBanner(null);
-                              await archiveTask(token, t.id);
-                              const refreshed = await listTasksInSection(sectionId, token);
-                              setTasks(refreshed);
-                              setBanner("Task archived.");
-                            } catch (e) {
-                              setError(errMessage(e));
-                            } finally {
-                              setTaskActionPending(null);
-                            }
-                          }}
-                          className="rounded-md border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700"
-                        >
-                          {taskActionPending === `archive:${t.id}` ? "Archiving..." : "Archive"}
+                          {taskActionPending === `assign:${t.id}` ? "Assigning…" : "Apply"}
                         </button>
                       </div>
-                    </div>
+                    </>
                   )}
                   {t.subtasks && t.subtasks.length > 0 ? (
                     <ul className="mt-3 space-y-2 border-l-2 border-neutral-200 pl-3">
@@ -1673,51 +1728,81 @@ export function AdminPanel() {
                               </div>
                             </div>
                           ) : (
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Subtask</span>
-                              <span>
-                                {st.title} <span className="text-neutral-500">({st.state})</span>
-                              </span>
-                              <span className="text-xs text-neutral-500">{st.dueDate ? new Date(st.dueDate).toLocaleString() : "No due date"}</span>
-                              <div className="ml-auto flex gap-2">
+                            <>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">Subtask</span>
+                                <span>
+                                  {st.title} <span className="text-neutral-500">({st.state})</span>
+                                </span>
+                                <span className="text-xs text-neutral-500">{st.dueDate ? new Date(st.dueDate).toLocaleString() : "No due date"}</span>
+                                <div className="ml-auto flex gap-2">
+                                  <button
+                                    type="button"
+                                    disabled={!!taskActionPending}
+                                    onClick={() => {
+                                      setTaskEditId(st.id);
+                                      setTaskEditTitle(st.title);
+                                      setTaskEditDueDate(st.dueDate ? new Date(st.dueDate).toISOString().slice(0, 16) : "");
+                                      setTaskEditClientVisible(st.clientVisible);
+                                    }}
+                                    className="rounded-md border border-neutral-200 bg-white px-2.5 py-1 text-xs font-semibold text-neutral-700"
+                                  >
+                                    Edit
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={!!taskActionPending}
+                                    onClick={async () => {
+                                      if (!window.confirm(`Archive subtask "${st.title}"?`)) return;
+                                      try {
+                                        setTaskActionPending(`archive:${st.id}`);
+                                        setError(null);
+                                        setBanner(null);
+                                        await archiveTask(token, st.id);
+                                        const refreshed = await listTasksInSection(sectionId, token);
+                                        setTasks(refreshed);
+                                        setBanner("Task archived.");
+                                      } catch (e) {
+                                        setError(errMessage(e));
+                                      } finally {
+                                        setTaskActionPending(null);
+                                      }
+                                    }}
+                                    className="rounded-md border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700"
+                                  >
+                                    {taskActionPending === `archive:${st.id}` ? "Archiving..." : "Archive"}
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-neutral-100 pt-3">
+                                <span className="text-xs font-medium text-neutral-600">Assign worker</span>
+                                <select
+                                  className="min-w-[180px] max-w-[240px] rounded-md border border-neutral-300 px-2 py-1 text-xs"
+                                  value={taskAssignPick[st.id] ?? ""}
+                                  onChange={(e) =>
+                                    setTaskAssignPick((prev) => ({ ...prev, [st.id]: e.target.value }))
+                                  }
+                                  disabled={!!taskActionPending || adminUsersLoading}
+                                >
+                                  <option value="">{adminUsersLoading ? "Loading users…" : "Select user…"}</option>
+                                  {adminUsers.map((u) => (
+                                    <option key={u.id} value={u.id}>
+                                      {userOptionLabel(u)}
+                                    </option>
+                                  ))}
+                                </select>
                                 <button
                                   type="button"
-                                  disabled={!!taskActionPending}
-                                  onClick={() => {
-                                    setTaskEditId(st.id);
-                                    setTaskEditTitle(st.title);
-                                    setTaskEditDueDate(st.dueDate ? new Date(st.dueDate).toISOString().slice(0, 16) : "");
-                                    setTaskEditClientVisible(st.clientVisible);
-                                  }}
-                                  className="rounded-md border border-neutral-200 bg-white px-2.5 py-1 text-xs font-semibold text-neutral-700"
+                                  disabled={
+                                    !(taskAssignPick[st.id] ?? "").trim() || !!taskActionPending || !token
+                                  }
+                                  onClick={() => void assignExistingTask(st.id, taskAssignPick[st.id])}
+                                  className="rounded-md border border-neutral-800 bg-neutral-900 px-2.5 py-1 text-xs font-semibold text-white disabled:opacity-40"
                                 >
-                                  Edit
-                                </button>
-                                <button
-                                  type="button"
-                                  disabled={!!taskActionPending}
-                                  onClick={async () => {
-                                    if (!window.confirm(`Archive subtask "${st.title}"?`)) return;
-                                    try {
-                                      setTaskActionPending(`archive:${st.id}`);
-                                      setError(null);
-                                      setBanner(null);
-                                      await archiveTask(token, st.id);
-                                      const refreshed = await listTasksInSection(sectionId, token);
-                                      setTasks(refreshed);
-                                      setBanner("Task archived.");
-                                    } catch (e) {
-                                      setError(errMessage(e));
-                                    } finally {
-                                      setTaskActionPending(null);
-                                    }
-                                  }}
-                                  className="rounded-md border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700"
-                                >
-                                  {taskActionPending === `archive:${st.id}` ? "Archiving..." : "Archive"}
+                                  {taskActionPending === `assign:${st.id}` ? "Assigning…" : "Apply"}
                                 </button>
                               </div>
-                            </div>
+                            </>
                           )}
                         </li>
                       ))}

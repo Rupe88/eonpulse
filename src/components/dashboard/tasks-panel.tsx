@@ -141,17 +141,41 @@ export function TasksPanel() {
             <Spinner />
           </div>
         ) : sortedRows.length === 0 ? (
-          <section className="card-elevated p-8 text-center">
-            <p className="text-sm font-medium text-neutral-900">No assignments</p>
-            <p className="mt-2 text-sm text-neutral-500">
-              Nothing assigned to you in this scope yet. Check Projects or ask a project admin.
+          <section className="card-elevated p-8 text-left">
+            <p className="text-sm font-medium text-neutral-900">No assignments in this view</p>
+            <p className="mt-2 text-sm text-neutral-600">
+              This list only shows tasks where <strong>you are the assignee</strong> (executor). It does not list
+              projects you belong to, or tasks you only review — those appear under{" "}
+              <strong>Review queue</strong> on Overview.
             </p>
-            <Link
-              href="/dashboard/projects"
-              className="mt-4 inline-block text-sm font-medium text-neutral-900 underline underline-offset-2 hover:text-neutral-700"
-            >
-              View projects
-            </Link>
+            <ul className="mt-4 list-inside list-disc space-y-1.5 text-sm text-neutral-600">
+              <li>
+                <strong>Project member ≠ assigned:</strong> being added to a project does not create a task
+                assignment. An admin must assign each task to you (or pick you when creating the task).
+              </li>
+              <li>
+                <strong>Wrong project filter:</strong> try <strong>All projects</strong> above — your work might be
+                under another code (e.g. seed vs Ecommerce).
+              </li>
+              <li>
+                <strong>Reviewer only:</strong> if you were set as internal reviewer, use Overview → Review queue,
+                not this Tasks list.
+              </li>
+            </ul>
+            <div className="mt-6 flex flex-wrap gap-4">
+              <Link
+                href="/dashboard/projects"
+                className="text-sm font-medium text-neutral-900 underline underline-offset-2 hover:text-neutral-700"
+              >
+                View projects
+              </Link>
+              <Link
+                href="/dashboard"
+                className="text-sm font-medium text-neutral-900 underline underline-offset-2 hover:text-neutral-700"
+              >
+                Back to Overview
+              </Link>
+            </div>
           </section>
         ) : (
           <div className="overflow-x-auto rounded-xl border border-neutral-200 bg-white shadow-sm">
