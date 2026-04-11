@@ -292,15 +292,24 @@ export function WorkerOverview() {
                       <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
                         <h3 className="text-sm font-semibold text-neutral-900">Quick Actions</h3>
                         <div className="mt-3 space-y-2">
-                          <a href="/admin" className="block rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm font-medium text-neutral-800 hover:bg-neutral-100">
+                          <Link
+                            href="/admin"
+                            className="block rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm font-medium text-neutral-800 hover:bg-neutral-100"
+                          >
                             Open Admin Setup
-                          </a>
-                          <a href="/dashboard/tasks" className="block rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm font-medium text-neutral-800 hover:bg-neutral-100">
+                          </Link>
+                          <Link
+                            href="/dashboard/tasks"
+                            className="block rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm font-medium text-neutral-800 hover:bg-neutral-100"
+                          >
                             View All Tasks
-                          </a>
-                          <a href="/dashboard/projects" className="block rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm font-medium text-neutral-800 hover:bg-neutral-100">
+                          </Link>
+                          <Link
+                            href="/dashboard/projects"
+                            className="block rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm font-medium text-neutral-800 hover:bg-neutral-100"
+                          >
                             Browse Projects
-                          </a>
+                          </Link>
                         </div>
                         {overview.project ? (
                           <div className="mt-4 rounded-md border border-neutral-100 bg-neutral-50 p-3">

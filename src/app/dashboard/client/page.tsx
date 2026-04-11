@@ -38,7 +38,7 @@ export default function ClientDashboardPage() {
   return (
     <AppShell
       headerTitle="Client Workspace"
-      headerSubtitle="Approvals, comments, invoices and delivery updates"
+      headerSubtitle="Progress, approvals, invoices, and files — without internal delivery noise"
       headerClassName="px-6"
       mainClassName="flex-1 px-6 py-8"
     >
