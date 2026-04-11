@@ -20,10 +20,15 @@ const baseNav: NavItem[] = [
   { href: "/dashboard/tasks", label: "Tasks", icon: CheckSquareIcon },
 ];
 
-/** Global sub-admin: delivery control only (no generic worker overview). */
+/**
+ * Global sub-admin: delivery operations — same workspace routes as workers plus client preview.
+ * (Full Admin UI stays ADMIN-only via `canAccessAdminPanel`.)
+ */
 const subAdminNav: NavItem[] = [
   { href: "/dashboard", label: "Delivery", icon: LayoutGridIcon },
   { href: "/dashboard/tasks", label: "Task queue", icon: CheckSquareIcon },
+  { href: "/dashboard/projects", label: "Projects", icon: FolderIcon },
+  { href: "/dashboard/client", label: "Client Workspace", icon: ReviewIcon },
 ];
 
 function navItemActive(pathname: string, href: string): boolean {
@@ -226,6 +231,11 @@ export function AppShell({
       { href: "/admin/progress", label: "Progress", icon: ProgressIcon },
       { href: "/admin/workflow", label: "Workflow", icon: WorkflowIcon },
       { href: "/admin/git", label: "Git", icon: GitIcon },
+      { href: "/admin/ops", label: "Ops", icon: OpsIcon },
+    );
+  } else if (isGlobalSubAdmin(role)) {
+    nav.push(
+      { href: "/admin/users", label: "Users", icon: UsersIcon },
       { href: "/admin/ops", label: "Ops", icon: OpsIcon },
     );
   }

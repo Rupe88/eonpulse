@@ -218,12 +218,32 @@ export type ProjectMemberOption = {
   email: string;
 };
 
+/** Workspace delivery roles that can be executors; includes people not yet on the project roster. */
+export type ProjectAssignmentCandidate = {
+  userId: string;
+  name: string | null;
+  email: string;
+  workspaceRole: string;
+  projectRole: string | null;
+  onProject: boolean;
+};
+
 export async function listProjectMembers(
   accessToken: string,
   projectId: string,
 ): Promise<ProjectMemberOption[]> {
   return apiGet<ProjectMemberOption[]>(
     `/workspace/projects/${encodeURIComponent(projectId)}/members`,
+    accessToken,
+  );
+}
+
+export async function listProjectAssignmentCandidates(
+  accessToken: string,
+  projectId: string,
+): Promise<ProjectAssignmentCandidate[]> {
+  return apiGet<ProjectAssignmentCandidate[]>(
+    `/workspace/projects/${encodeURIComponent(projectId)}/members/for-assignment`,
     accessToken,
   );
 }

@@ -114,14 +114,15 @@ export function SubAdminDashboard() {
   return (
     <div className="w-full max-w-none space-y-8">
       <div className="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm">
-        <p className="text-sm font-semibold text-neutral-900">Sub-admin · Delivery control</p>
+        <p className="text-sm font-semibold text-neutral-900">Sub-admin · Delivery operations</p>
         <p className="mt-2 text-sm leading-relaxed text-neutral-600">
-          <strong>Assign</strong> tasks with no executor below, <strong>request internal rework</strong>, and{" "}
-          <strong>send to client review</strong> from each task&apos;s detail page (internal review section). Use the
-          internal review list to find tasks waiting on you.
+          You can <strong>assign work</strong> to any worker or delivery lead in the workspace (they are added to the
+          project automatically if needed), monitor <strong>internal review</strong>, and from each task page{" "}
+          <strong>request rework</strong> or <strong>send work to client review</strong>. Workspace setup and billing
+          stay in Admin.
         </p>
         <p className="mt-3 text-xs text-neutral-500">
-          Tip: open any task → <strong>Internal review (lead)</strong> appears when the task is in internal review.
+          Open a task in internal review to see lead actions (rework / send to client).
         </p>
       </div>
 

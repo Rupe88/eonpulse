@@ -23,3 +23,12 @@ export function canAccessAuditorWorkspace(role: string | undefined): boolean {
 export function canAccessAdminPanel(role: string | undefined): boolean {
   return String(role ?? "").toUpperCase() === "ADMIN";
 }
+
+/**
+ * Users management and Ops (audit, sessions, …) — backend allows global Admin and Sub-admin.
+ * Sub-admins cannot use the rest of `/admin/*` (planning, billing UI, etc.).
+ */
+export function canAccessAdminSupportModules(role: string | undefined): boolean {
+  const r = String(role ?? "").toUpperCase();
+  return r === "ADMIN" || r === "SUB_ADMIN";
+}

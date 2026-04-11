@@ -7,7 +7,7 @@ import { AppShell, AppShellSkeleton } from "@/components/layout/app-shell";
 import { Spinner } from "@/components/ui/spinner";
 import { useAuth } from "@/contexts/auth-context";
 import { replaceOrHardNavigate } from "@/lib/auth/navigate-after-auth";
-import { canAccessAdminPanel } from "@/lib/auth/role-gates";
+import { canAccessAdminSupportModules } from "@/lib/auth/role-gates";
 import { OpsPanel } from "@/components/admin/ops-panel";
 
 export default function AdminOpsPage() {
@@ -20,7 +20,7 @@ export default function AdminOpsPage() {
       replaceOrHardNavigate(router, "/login?next=%2Fadmin%2Fops", "/admin/ops");
       return;
     }
-    if (!canAccessAdminPanel(user.role)) {
+    if (!canAccessAdminSupportModules(user.role)) {
       router.replace("/dashboard");
     }
   }, [ready, status, user, router]);
@@ -36,7 +36,7 @@ export default function AdminOpsPage() {
       </div>
     );
   }
-  if (!canAccessAdminPanel(user.role)) return null;
+  if (!canAccessAdminSupportModules(user.role)) return null;
 
   return (
     <AppShell headerTitle="Maintenance & Ops" headerSubtitle="Audit, security and operational diagnostics" headerClassName="px-6" mainClassName="flex-1 px-6 py-8">

@@ -145,8 +145,8 @@ export function SubAdminTasksPanel() {
     <div className="w-full max-w-none space-y-8">
       <p className="text-sm leading-relaxed text-neutral-600">
         Project-wide task assignments. Open a task to <strong>request internal rework</strong> or{" "}
-        <strong>send to client review</strong> when it is in internal review. Use <strong>Assign work</strong> after
-        picking a project — no Admin access required.
+        <strong>send to client review</strong> when it is in internal review. <strong>Assign work</strong> lists the
+        whole workspace delivery roster (workers and leads); people not on the project yet are added when you assign.
       </p>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">

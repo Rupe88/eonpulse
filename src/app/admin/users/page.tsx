@@ -7,7 +7,7 @@ import { AppShell, AppShellSkeleton } from "@/components/layout/app-shell";
 import { UsersManagementPanel } from "@/components/admin/users-management-panel";
 import { Spinner } from "@/components/ui/spinner";
 import { replaceOrHardNavigate } from "@/lib/auth/navigate-after-auth";
-import { canAccessAdminPanel } from "@/lib/auth/role-gates";
+import { canAccessAdminSupportModules } from "@/lib/auth/role-gates";
 import { useAuth } from "@/contexts/auth-context";
 
 export default function AdminUsersPage() {
@@ -20,7 +20,7 @@ export default function AdminUsersPage() {
       replaceOrHardNavigate(router, "/login?next=%2Fadmin%2Fusers", "/admin/users");
       return;
     }
-    if (!canAccessAdminPanel(user.role)) {
+    if (!canAccessAdminSupportModules(user.role)) {
       router.replace("/dashboard");
     }
   }, [ready, status, user, router]);
@@ -44,7 +44,7 @@ export default function AdminUsersPage() {
     );
   }
 
-  if (!canAccessAdminPanel(user.role)) {
+  if (!canAccessAdminSupportModules(user.role)) {
     return null;
   }
 

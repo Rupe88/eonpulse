@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Spinner } from "@/components/ui/spinner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/auth-context";
+import { isGlobalSubAdmin } from "@/lib/auth/role-gates";
 import { ApiError } from "@/lib/api/http";
 import { createAdminUser, listAdminUsers, updateAdminUser, type AdminUserRow } from "@/lib/api/users";
 
@@ -65,10 +66,17 @@ export function UsersManagementPanel() {
   const [firstLoadDone, setFirstLoadDone] = useState(false);
 
   const canCreateAdmin = String(user?.role ?? "").toUpperCase() === "ADMIN";
+  const isSubAdmin = isGlobalSubAdmin(user?.role);
   const availableRoles = useMemo(
     () => (canCreateAdmin ? ROLE_OPTIONS : ROLE_OPTIONS.filter((r) => r !== "ADMIN")),
     [canCreateAdmin],
   );
+  const canEditRow = (u: AdminUserRow) => {
+    if (canCreateAdmin) return true;
+    if (isSubAdmin && u.globalRole === "ADMIN") return false;
+    return isSubAdmin;
+  };
+  const canAdjustRoleInEdit = canCreateAdmin || isSubAdmin;
 
   useEffect(() => {
     const t = window.setTimeout(() => setSearchDebounced(search), 250);
@@ -192,6 +200,7 @@ export function UsersManagementPanel() {
   }
 
   function beginEdit(u: AdminUserRow) {
+    if (!canEditRow(u)) return;
     setEditId(u.id);
     setEditName(u.name ?? "");
     setEditEmail(u.email);
@@ -202,6 +211,8 @@ export function UsersManagementPanel() {
 
   async function saveEdit(userId: string) {
     if (!token) return;
+    const targetRow = rows.find((r) => r.id === userId);
+    if (targetRow && !canEditRow(targetRow)) return;
     setRowBusyId(userId);
     setError(null);
     try {
@@ -260,6 +271,11 @@ export function UsersManagementPanel() {
         <h2 className="text-base font-semibold text-neutral-900">Create User</h2>
         <p className="mt-1 text-sm text-neutral-600">
           Create account with email + password and assign system role.
+          {isSubAdmin && !canCreateAdmin ? (
+            <span className="block text-neutral-500">
+              Sub-admins cannot create or promote users to the global Admin role.
+            </span>
+          ) : null}
         </p>
         <form onSubmit={onCreateUser} className="mt-5 grid gap-3 sm:grid-cols-2">
           <label className="block space-y-1.5">
@@ -500,7 +516,7 @@ export function UsersManagementPanel() {
                             value={editRole}
                             onChange={(e) => setEditRole(e.target.value)}
                             className="rounded-md border border-neutral-300 px-2 py-1.5 text-sm"
-                            disabled={!canCreateAdmin}
+                            disabled={!canAdjustRoleInEdit}
                           >
                             {(canCreateAdmin
                               ? ROLE_OPTIONS
@@ -577,7 +593,7 @@ export function UsersManagementPanel() {
                                 Cancel
                               </button>
                             </>
-                          ) : (
+                          ) : canEditRow(u) ? (
                             <button
                               type="button"
                               onClick={() => beginEdit(u)}
@@ -585,6 +601,10 @@ export function UsersManagementPanel() {
                             >
                               Edit
                             </button>
+                          ) : (
+                            <span className="text-xs text-neutral-400" title="Admin users can only be edited by a global Admin">
+                              —
+                            </span>
                           )}
                         </div>
                       </td>

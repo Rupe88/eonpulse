@@ -37,7 +37,7 @@ export function DashboardAppShell({ children }: { children: React.ReactNode }) {
     return {
       title: subAdmin ? "Delivery" : "Overview",
       subtitle: subAdmin
-        ? "Internal review queue and routing — assign work in Admin when needed"
+        ? "Assign work, internal review, and client handoff — from your workspace roster"
         : "Your assignments, reviews, and project pipeline",
     };
   }, [pathname, subAdmin]);
